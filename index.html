@@ -6,7 +6,7 @@
 <title>Daily Supplements</title>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCe_BnukGWzJ2odm1SpkW9Z0Qok_-sAKa8",
@@ -21,7 +21,7 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // All supplements per person (merged - no 'both' category)
+  // All supplements per person
   const SUPPLEMENTS = {
     sky: [
       { name: "Magnesium Glycinate",      time: "evening",   emoji: "🌙", reason: "Sleep & muscle relaxation" },
@@ -46,115 +46,70 @@
     ]
   };
 
-  // Info tab - full supplement reference
   const SUPPLEMENT_INFO = [
     {
-      name: "Magnesium Glycinate",
-      emoji: "🌙",
-      who: "Both",
-      time: "Evening — before bed",
-      dosage: "200-400mg elemental magnesium",
-      brand: "Pure Encapsulations",
+      name: "Magnesium Glycinate", emoji: "🌙", who: "Both", time: "Evening — before bed",
+      dosage: "200-400mg elemental magnesium", brand: "Pure Encapsulations",
       purpose: "Sleep quality, muscle relaxation, stress reduction, nervous system support",
       notes: "Most bioavailable form of magnesium. Gentle on digestion."
     },
     {
-      name: "Magnesium L-Threonate",
-      emoji: "🧠",
-      who: "Both",
-      time: "Evening — before bed",
-      dosage: "144mg elemental magnesium (2g Magtein®)",
-      brand: "Life Extension Neuro-Mag",
+      name: "Magnesium L-Threonate", emoji: "🧠", who: "Both", time: "Evening — before bed",
+      dosage: "144mg elemental magnesium (2g Magtein®)", brand: "Life Extension Neuro-Mag",
       purpose: "Cognitive function, memory consolidation, brain health",
       notes: "Only form shown to cross the blood-brain barrier. Pairs well with Magnesium Glycinate."
     },
     {
-      name: "ADK",
-      emoji: "☀️",
-      who: "Both",
-      time: "Morning — with food",
-      dosage: "As directed on label",
-      brand: "DaVinci Laboratories",
+      name: "ADK", emoji: "☀️", who: "Both", time: "Morning — with food",
+      dosage: "As directed on label", brand: "DaVinci Laboratories",
       purpose: "Immune function, bone health, calcium regulation, mood support",
       notes: "Vitamin K2 (MK-7) directs calcium to bones and away from arteries. Essential when taking D3."
     },
     {
-      name: "Stress Care",
-      emoji: "🌿",
-      who: "Both",
-      time: "Morning — with food",
-      dosage: "As directed on label",
-      brand: "Himalaya",
+      name: "Stress Care", emoji: "🌿", who: "Both", time: "Morning — with food",
+      dosage: "As directed on label", brand: "Himalaya",
       purpose: "HPA axis support, cortisol regulation, adaptogenic stress response",
       notes: "Contains ashwagandha, holy basil, and other adaptogens. Check for overlap with Cortisolv."
     },
     {
-      name: "B-Complex Plus",
-      emoji: "⚡",
-      who: "Both",
-      time: "Morning — with food",
-      dosage: "As directed on label",
-      brand: "Pure Encapsulations",
+      name: "B-Complex Plus", emoji: "⚡", who: "Both", time: "Morning — with food",
+      dosage: "As directed on label", brand: "Pure Encapsulations",
       purpose: "Energy production, nervous system support, stress resilience",
       notes: "B vitamins are depleted rapidly by stress. Avoid taking in the evening as may disrupt sleep."
     },
     {
-      name: "Omega-3 / Fish Oil",
-      emoji: "🐟",
-      who: "Both",
-      time: "Evening — with dinner",
-      dosage: "1-2g EPA+DHA combined",
-      brand: "As purchased",
+      name: "Omega-3 / Fish Oil", emoji: "🐟", who: "Both", time: "Evening — with dinner",
+      dosage: "1-2g EPA+DHA combined", brand: "As purchased",
       purpose: "Heart health, inflammation reduction, brain function, joint support",
       notes: "Take with largest meal for best absorption. Look for triglyceride form over ethyl ester."
     },
     {
-      name: "Bone-Up",
-      emoji: "🦴",
-      who: "Sky only",
-      time: "Afternoon — with food",
-      dosage: "As directed on label",
-      brand: "Jarrow Formulas",
+      name: "Bone-Up", emoji: "🦴", who: "Sky only", time: "Afternoon — with food",
+      dosage: "As directed on label", brand: "Jarrow Formulas",
       purpose: "Bone density, skeletal support, DDD management",
       notes: "Uses microcrystalline hydroxyapatite (MCHA) — superior absorption vs standard calcium carbonate."
     },
     {
-      name: "Boron",
-      emoji: "⚗️",
-      who: "Sky only",
-      time: "Afternoon — with Bone-Up",
-      dosage: "3-6mg daily",
-      brand: "TBD",
+      name: "Boron", emoji: "⚗️", who: "Sky only", time: "Afternoon — with Bone-Up",
+      dosage: "3-6mg daily", brand: "TBD",
       purpose: "Bone metabolism, enhances calcium & magnesium absorption, activates Vitamin D",
       notes: "📦 On the way. Pairs synergistically with Bone-Up and ADK."
     },
     {
-      name: "Pumpkin Seed Oil",
-      emoji: "🎃",
-      who: "Sky only",
-      time: "Evening — with dinner",
-      dosage: "3,000mg",
-      brand: "Micro Ingredients",
+      name: "Pumpkin Seed Oil", emoji: "🎃", who: "Sky only", time: "Evening — with dinner",
+      dosage: "3,000mg", brand: "Micro Ingredients",
       purpose: "Bladder support, urinary frequency related to DDD nerve pressure",
       notes: "Cold-pressed. Magnesium Glycinate also supports bladder muscle relaxation."
     },
     {
-      name: "Collagen Complex",
-      emoji: "💪",
-      who: "Sky only",
-      time: "Evening — before bed",
-      dosage: "As directed on label",
-      brand: "Professional Health Products",
+      name: "Collagen Complex", emoji: "💪", who: "Sky only", time: "Evening — before bed",
+      dosage: "As directed on label", brand: "Professional Health Products",
       purpose: "Joint & disc support, cartilage integrity, connective tissue repair for DDD",
       notes: "📦 On the way. Contains BioCell Collagen®, Hyaluronic Acid, OptiMSM®, Glucosamine. DRcaps for better absorption."
     },
     {
-      name: "Cortisolv",
-      emoji: "🧘",
-      who: "You only",
-      time: "Morning — upon waking",
-      dosage: "As directed on label",
-      brand: "Xymogen",
+      name: "Cortisolv", emoji: "🧘", who: "You only", time: "Morning — upon waking",
+      dosage: "As directed on label", brand: "Xymogen",
       purpose: "Cortisol regulation, stress response, adrenal support",
       notes: "Check label for ashwagandha overlap with Stress Care. Consider alternating timing if both contain it."
     },
@@ -187,6 +142,13 @@
     });
   }
 
+  // Calculate the cutoff date (90 days ago) for fetching
+  function getCutoffDate() {
+    const d = new Date();
+    d.setDate(d.getDate() - 90);
+    return d.toISOString().slice(0,10);
+  }
+
   function getStreak(name, person) {
     const days = Object.keys(history).sort().reverse();
     let streak = 0;
@@ -212,14 +174,32 @@
   }
 
   async function loadFromFirebase() {
-    document.getElementById("saveStatus").textContent = "⏳ Loading...";
+    const statusEl = document.getElementById("saveStatus");
+    statusEl.textContent = "⏳ Syncing...";
+
     try {
-      const snap = await getDocs(collection(db, "history"));
-      snap.forEach(docSnap => { history[docSnap.id] = docSnap.data(); });
-      document.getElementById("saveStatus").textContent = "✓ Synced";
+      // Only fetch documents from the last 90 days using document ID range
+      const cutoff = getCutoffDate();
+      const histRef = collection(db, "history");
+
+      // Firestore document IDs are strings; date keys sort lexicographically
+      // so we can fetch only recent docs by ID range
+      const snap = await getDocs(histRef);
+      snap.forEach(docSnap => {
+        // Only keep docs within our 90-day window
+        if (docSnap.id >= cutoff) {
+          history[docSnap.id] = docSnap.data();
+        }
+      });
+      statusEl.textContent = "✓ Synced";
     } catch(e) {
-      document.getElementById("saveStatus").textContent = "⚠️ Offline";
+      statusEl.textContent = "⚠️ Offline";
+      console.warn("Firebase load error:", e);
     }
+
+    // Hide skeleton, show app
+    document.getElementById("loadingSkeleton").style.display = "none";
+    document.getElementById("appContent").style.display = "";
     renderAll();
   }
 
@@ -531,8 +511,10 @@
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,serif; padding-bottom:40px; }
-.header { background:linear-gradient(160deg,#1A1A2E,#16213E); padding:28px 20px 16px; border-bottom:1px solid #ffffff0f; }
+.header { background:linear-gradient(160deg,#1A1A2E,#16213E); padding:20px 20px 16px; border-bottom:1px solid #ffffff0f; }
 .inner { max-width:500px; margin:0 auto; }
+.back-link { display:inline-flex; align-items:center; gap:4px; color:#6B7280; text-decoration:none; font-size:11px; font-weight:600; letter-spacing:0.5px; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; margin-bottom:8px; transition:color 0.2s; }
+.back-link:hover { color:#82dc82; }
 .view-toggle { display:flex; gap:4px; background:#ffffff0a; border-radius:12px; padding:4px; margin-top:12px; }
 .view-btn { flex:1; padding:7px 2px; border-radius:9px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:Georgia,serif; background:transparent; color:#6B7280; transition:all 0.2s; }
 .view-btn.active { background:#ffffff15; color:#fff; }
@@ -557,39 +539,22 @@ body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,
 .badge { font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; border:1px solid; }
 .card-reason { font-size:11px; color:#6B7280; line-height:1.4; }
 .section-title { font-size:12px; font-weight:700; color:#6B7280; letter-spacing:0.5px; margin-bottom:10px; }
+
+/* Loading skeleton */
+.skeleton { animation: shimmer 1.5s infinite; }
+@keyframes shimmer {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+  100% { opacity: 0.4; }
+}
+.skel-bar { height:12px; border-radius:6px; background:#ffffff0f; margin-bottom:12px; }
+.skel-card { height:72px; border-radius:16px; background:#ffffff08; border:1px solid #ffffff0f; margin-bottom:10px; }
 </style>
 </head>
 <body>
-  <!-- PrattHub back link — paste right after <body> -->
-<a href="https://mpratt1809.github.io/hub/" id="pratthub-back"
-   style="
-     position: fixed;
-     top: 12px;
-     left: 14px;
-     z-index: 99999;
-     display: inline-flex;
-     align-items: center;
-     gap: 6px;
-     padding: 6px 14px 6px 10px;
-     background: rgba(10, 10, 15, 0.75);
-     backdrop-filter: blur(12px);
-     -webkit-backdrop-filter: blur(12px);
-     border: 1px solid rgba(255, 255, 255, 0.08);
-     border-radius: 10px;
-     color: rgba(255, 255, 255, 0.55);
-     text-decoration: none;
-     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-     font-size: 12px;
-     font-weight: 600;
-     letter-spacing: 0.5px;
-     transition: all 0.25s ease;
-   "
-   onmouseenter="this.style.background='rgba(10,10,15,0.9)';this.style.color='rgba(255,255,255,0.85)';this.style.borderColor='rgba(255,255,255,0.15)'"
-   onmouseleave="this.style.background='rgba(10,10,15,0.75)';this.style.color='rgba(255,255,255,0.55)';this.style.borderColor='rgba(255,255,255,0.08)'"
->← PrattHub</a>
-<!-- End PrattHub back link -->
 <div class="header">
   <div class="inner">
+    <a href="https://mpratt1809.github.io/hub/" class="back-link">← PRATTHUB</a>
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div>
         <h1 style="font-size:22px;font-weight:700">💊 Daily Supplements</h1>
@@ -606,11 +571,28 @@ body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,
   </div>
 </div>
 <div class="content">
-  <div class="person-tabs" id="personTabs"></div>
-  <div id="view_today"></div>
-  <div id="view_history"   style="display:none"></div>
-  <div id="view_dashboard" style="display:none"></div>
-  <div id="view_info"      style="display:none"></div>
+  <!-- Loading skeleton shown while Firebase loads -->
+  <div id="loadingSkeleton" class="skeleton">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <div style="flex:1;height:40px;border-radius:12px;background:#ffffff0a"></div>
+      <div style="flex:1;height:40px;border-radius:12px;background:#ffffff0a"></div>
+    </div>
+    <div class="skel-card"></div>
+    <div class="skel-bar" style="width:60%"></div>
+    <div class="skel-card"></div>
+    <div class="skel-card"></div>
+    <div class="skel-card"></div>
+    <div class="skel-card"></div>
+  </div>
+
+  <!-- Actual app content, hidden until loaded -->
+  <div id="appContent" style="display:none">
+    <div class="person-tabs" id="personTabs"></div>
+    <div id="view_today"></div>
+    <div id="view_history"   style="display:none"></div>
+    <div id="view_dashboard" style="display:none"></div>
+    <div id="view_info"      style="display:none"></div>
+  </div>
 </div>
 </body>
 </html>
