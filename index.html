@@ -6,7 +6,7 @@
 <title>Daily Supplements</title>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCe_BnukGWzJ2odm1SpkW9Z0Qok_-sAKa8",
@@ -21,25 +21,144 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+  // All supplements per person (merged - no 'both' category)
   const SUPPLEMENTS = {
-    both: [
-      { name: "Magnesium Glycinate", time: "evening", reason: "Sleep & muscle relaxation", emoji: "🌙" },
-      { name: "Magnesium L-Threonate", time: "evening", reason: "Memory consolidation during sleep", emoji: "🧠" },
-      { name: "ADK", time: "morning", reason: "Fat-soluble vitamins with morning meal", emoji: "☀️" },
-      { name: "Stress Care", time: "morning", reason: "Adaptogens regulate morning cortisol", emoji: "🌿" },
-      { name: "B-Complex Plus", time: "morning", reason: "Energy & stress response, with food", emoji: "⚡" },
-      { name: "Omega-3 / Fish Oil", time: "evening", reason: "Best absorbed with dinner", emoji: "🐟" },
-    ],
     sky: [
-      { name: "Bone-Up", time: "afternoon", reason: "Calcium with food, away from other minerals", emoji: "🦴" },
-      { name: "Boron", time: "afternoon", reason: "Pairs with Bone-Up, enhances calcium uptake", emoji: "⚗️", incoming: true },
-      { name: "Pumpkin Seed Oil", time: "evening", reason: "Bladder support, best with dinner", emoji: "🎃" },
-      { name: "Collagen Complex", time: "evening", reason: "Connective tissue repair peaks overnight", emoji: "💪", incoming: true },
+      { name: "Magnesium Glycinate",      time: "evening",   emoji: "🌙", reason: "Sleep & muscle relaxation" },
+      { name: "Magnesium L-Threonate",    time: "evening",   emoji: "🧠", reason: "Memory consolidation during sleep" },
+      { name: "ADK",                      time: "morning",   emoji: "☀️", reason: "Fat-soluble vitamins with morning meal" },
+      { name: "Stress Care",              time: "morning",   emoji: "🌿", reason: "Adaptogens regulate morning cortisol" },
+      { name: "B-Complex Plus",           time: "morning",   emoji: "⚡", reason: "Energy & stress response, with food" },
+      { name: "Omega-3 / Fish Oil",       time: "evening",   emoji: "🐟", reason: "Best absorbed with dinner" },
+      { name: "Bone-Up",                  time: "afternoon", emoji: "🦴", reason: "Calcium with food, away from other minerals" },
+      { name: "Boron",                    time: "afternoon", emoji: "⚗️", reason: "Pairs with Bone-Up, enhances calcium uptake", incoming: true },
+      { name: "Pumpkin Seed Oil",         time: "evening",   emoji: "🎃", reason: "Bladder support, best with dinner" },
+      { name: "Collagen Complex",         time: "evening",   emoji: "💪", reason: "Connective tissue repair peaks overnight", incoming: true },
     ],
     you: [
-      { name: "Cortisolv", time: "morning", reason: "Cortisol peaks at 8-9am, regulate early", emoji: "🧘" },
+      { name: "Magnesium Glycinate",      time: "evening",   emoji: "🌙", reason: "Sleep & muscle relaxation" },
+      { name: "Magnesium L-Threonate",    time: "evening",   emoji: "🧠", reason: "Memory consolidation during sleep" },
+      { name: "ADK",                      time: "morning",   emoji: "☀️", reason: "Fat-soluble vitamins with morning meal" },
+      { name: "Stress Care",              time: "morning",   emoji: "🌿", reason: "Adaptogens regulate morning cortisol" },
+      { name: "B-Complex Plus",           time: "morning",   emoji: "⚡", reason: "Energy & stress response, with food" },
+      { name: "Omega-3 / Fish Oil",       time: "evening",   emoji: "🐟", reason: "Best absorbed with dinner" },
+      { name: "Cortisolv",               time: "morning",   emoji: "🧘", reason: "Cortisol peaks at 8-9am, regulate early" },
     ]
   };
+
+  // Info tab - full supplement reference
+  const SUPPLEMENT_INFO = [
+    {
+      name: "Magnesium Glycinate",
+      emoji: "🌙",
+      who: "Both",
+      time: "Evening — before bed",
+      dosage: "200-400mg elemental magnesium",
+      brand: "Pure Encapsulations",
+      purpose: "Sleep quality, muscle relaxation, stress reduction, nervous system support",
+      notes: "Most bioavailable form of magnesium. Gentle on digestion."
+    },
+    {
+      name: "Magnesium L-Threonate",
+      emoji: "🧠",
+      who: "Both",
+      time: "Evening — before bed",
+      dosage: "144mg elemental magnesium (2g Magtein®)",
+      brand: "Life Extension Neuro-Mag",
+      purpose: "Cognitive function, memory consolidation, brain health",
+      notes: "Only form shown to cross the blood-brain barrier. Pairs well with Magnesium Glycinate."
+    },
+    {
+      name: "ADK",
+      emoji: "☀️",
+      who: "Both",
+      time: "Morning — with food",
+      dosage: "As directed on label",
+      brand: "DaVinci Laboratories",
+      purpose: "Immune function, bone health, calcium regulation, mood support",
+      notes: "Vitamin K2 (MK-7) directs calcium to bones and away from arteries. Essential when taking D3."
+    },
+    {
+      name: "Stress Care",
+      emoji: "🌿",
+      who: "Both",
+      time: "Morning — with food",
+      dosage: "As directed on label",
+      brand: "Himalaya",
+      purpose: "HPA axis support, cortisol regulation, adaptogenic stress response",
+      notes: "Contains ashwagandha, holy basil, and other adaptogens. Check for overlap with Cortisolv."
+    },
+    {
+      name: "B-Complex Plus",
+      emoji: "⚡",
+      who: "Both",
+      time: "Morning — with food",
+      dosage: "As directed on label",
+      brand: "Pure Encapsulations",
+      purpose: "Energy production, nervous system support, stress resilience",
+      notes: "B vitamins are depleted rapidly by stress. Avoid taking in the evening as may disrupt sleep."
+    },
+    {
+      name: "Omega-3 / Fish Oil",
+      emoji: "🐟",
+      who: "Both",
+      time: "Evening — with dinner",
+      dosage: "1-2g EPA+DHA combined",
+      brand: "As purchased",
+      purpose: "Heart health, inflammation reduction, brain function, joint support",
+      notes: "Take with largest meal for best absorption. Look for triglyceride form over ethyl ester."
+    },
+    {
+      name: "Bone-Up",
+      emoji: "🦴",
+      who: "Sky only",
+      time: "Afternoon — with food",
+      dosage: "As directed on label",
+      brand: "Jarrow Formulas",
+      purpose: "Bone density, skeletal support, DDD management",
+      notes: "Uses microcrystalline hydroxyapatite (MCHA) — superior absorption vs standard calcium carbonate."
+    },
+    {
+      name: "Boron",
+      emoji: "⚗️",
+      who: "Sky only",
+      time: "Afternoon — with Bone-Up",
+      dosage: "3-6mg daily",
+      brand: "TBD",
+      purpose: "Bone metabolism, enhances calcium & magnesium absorption, activates Vitamin D",
+      notes: "📦 On the way. Pairs synergistically with Bone-Up and ADK."
+    },
+    {
+      name: "Pumpkin Seed Oil",
+      emoji: "🎃",
+      who: "Sky only",
+      time: "Evening — with dinner",
+      dosage: "3,000mg",
+      brand: "Micro Ingredients",
+      purpose: "Bladder support, urinary frequency related to DDD nerve pressure",
+      notes: "Cold-pressed. Magnesium Glycinate also supports bladder muscle relaxation."
+    },
+    {
+      name: "Collagen Complex",
+      emoji: "💪",
+      who: "Sky only",
+      time: "Evening — before bed",
+      dosage: "As directed on label",
+      brand: "Professional Health Products",
+      purpose: "Joint & disc support, cartilage integrity, connective tissue repair for DDD",
+      notes: "📦 On the way. Contains BioCell Collagen®, Hyaluronic Acid, OptiMSM®, Glucosamine. DRcaps for better absorption."
+    },
+    {
+      name: "Cortisolv",
+      emoji: "🧘",
+      who: "You only",
+      time: "Morning — upon waking",
+      dosage: "As directed on label",
+      brand: "Xymogen",
+      purpose: "Cortisol regulation, stress response, adrenal support",
+      notes: "Check label for ashwagandha overlap with Stress Care. Consider alternating timing if both contain it."
+    },
+  ];
 
   const TIME_CONFIG = {
     morning:   { bg: "#FFF7ED22", accent: "#F97316", border: "#F9731633", icon: "🌅" },
@@ -48,17 +167,15 @@
   };
 
   const PERSON_CONFIG = {
-    both: { label: "Both", color: "#7C3AED" },
-    sky:  { label: "Sky",  color: "#DB2777" },
-    you:  { label: "You",  color: "#0284C7" },
+    sky: { label: "Sky",  color: "#DB2777" },
+    you: { label: "You",  color: "#0284C7" },
   };
 
   let history = {};
-  let activePerson = "both";
+  let activePerson = "sky";
   let activeTime = "all";
   let currentView = "today";
   let activeDashRange = 30;
-  let saving = false;
 
   function todayKey() { return new Date().toISOString().slice(0,10); }
 
@@ -70,33 +187,27 @@
     });
   }
 
-  function getAllSupps(person) {
-    if (person === "sky") return [...SUPPLEMENTS.both, ...SUPPLEMENTS.sky];
-    if (person === "you") return [...SUPPLEMENTS.both, ...SUPPLEMENTS.you];
-    return SUPPLEMENTS.both;
-  }
-
-  function getStreak(name, personKey) {
+  function getStreak(name, person) {
     const days = Object.keys(history).sort().reverse();
     let streak = 0;
     for (const d of days) {
-      if (history[d]?.[personKey]?.[name]) streak++;
+      if (history[d]?.[person]?.[name]) streak++;
       else break;
     }
     return streak;
   }
 
-  function getAdherenceRate(name, personKey, days) {
+  function getAdherenceRate(name, person, days) {
     const range = getDateRange(days);
-    const taken = range.filter(d => history[d]?.[personKey]?.[name]).length;
+    const taken = range.filter(d => history[d]?.[person]?.[name]).length;
     return Math.round((taken / range.length) * 100);
   }
 
   function getDayCompletion(day, person) {
-    const supps = getAllSupps(person === "both" ? "both" : person);
+    const supps = SUPPLEMENTS[person];
     const total = supps.length;
     if (!total) return 0;
-    const done = supps.filter(s => history[day]?.[s.personKey]?.[s.name]).length;
+    const done = supps.filter(s => history[day]?.[person]?.[s.name]).length;
     return Math.round((done / total) * 100);
   }
 
@@ -104,9 +215,7 @@
     document.getElementById("saveStatus").textContent = "⏳ Loading...";
     try {
       const snap = await getDocs(collection(db, "history"));
-      snap.forEach(docSnap => {
-        history[docSnap.id] = docSnap.data();
-      });
+      snap.forEach(docSnap => { history[docSnap.id] = docSnap.data(); });
       document.getElementById("saveStatus").textContent = "✓ Synced";
     } catch(e) {
       document.getElementById("saveStatus").textContent = "⚠️ Offline";
@@ -115,7 +224,6 @@
   }
 
   async function saveToFirebase(dateKey) {
-    saving = true;
     document.getElementById("saveStatus").textContent = "💾 Saving...";
     try {
       await setDoc(doc(db, "history", dateKey), history[dateKey] || {});
@@ -123,33 +231,28 @@
     } catch(e) {
       document.getElementById("saveStatus").textContent = "⚠️ Save failed";
     }
-    saving = false;
   }
 
-  function toggle(name, personKey) {
+  function toggle(name, person) {
     const d = todayKey();
     if (!history[d]) history[d] = {};
-    if (!history[d][personKey]) history[d][personKey] = {};
-    history[d][personKey][name] = !history[d][personKey][name];
+    if (!history[d][person]) history[d][person] = {};
+    history[d][person][name] = !history[d][person][name];
     saveToFirebase(d);
     renderAll();
   }
 
-  function isChecked(name, personKey) {
-    return !!history[todayKey()]?.[personKey]?.[name];
+  function isChecked(name, person) {
+    return !!history[todayKey()]?.[person]?.[name];
   }
 
   function getList() {
-    const keys = activePerson === "sky" ? ["both","sky"] : activePerson === "you" ? ["both","you"] : ["both"];
-    return keys.flatMap(pk =>
-      SUPPLEMENTS[pk].map(s => ({...s, personKey: pk}))
-        .filter(s => activeTime === "all" || s.time === activeTime)
-    );
+    return SUPPLEMENTS[activePerson].filter(s => activeTime === "all" || s.time === activeTime);
   }
 
   function setView(v) {
     currentView = v;
-    ["today","history","dashboard"].forEach(x => {
+    ["today","history","dashboard","info"].forEach(x => {
       document.getElementById("btn_"+x).className = "view-btn" + (v===x?" active":"");
       document.getElementById("view_"+x).style.display = v===x?"":"none";
     });
@@ -173,9 +276,8 @@
   function renderToday() {
     const pc = PERSON_CONFIG[activePerson];
     const list = getList();
-    const done = list.filter(s => isChecked(s.name, s.personKey)).length;
+    const done = list.filter(s => isChecked(s.name, activePerson)).length;
     const pct = list.length ? Math.round((done/list.length)*100) : 0;
-    const gradEnd = activePerson==="sky" ? "#F472B6" : activePerson==="you" ? "#38BDF8" : "#A78BFA";
 
     const timeHtml = ["all","morning","afternoon","evening"].map(t => `
       <button class="time-btn${activeTime===t?' active':''}" onclick="setTime('${t}')">
@@ -183,15 +285,14 @@
       </button>`).join("");
 
     const cardsHtml = list.map(s => {
-      const checked = isChecked(s.name, s.personKey);
-      const spc = PERSON_CONFIG[s.personKey];
+      const checked = isChecked(s.name, activePerson);
       const tc = TIME_CONFIG[s.time];
-      const streak = getStreak(s.name, s.personKey);
+      const streak = getStreak(s.name, activePerson);
       return `
       <div class="card ${checked?'checked':'unchecked'}"
-        style="border-color:${checked?'#ffffff0a':spc.color+'44'}"
-        onclick="toggle('${s.name.replace(/'/g,"\\'")}','${s.personKey}')">
-        <div class="checkbox" style="border-color:${checked?'#4ADE80':spc.color};background:${checked?'#4ADE8022':'transparent'}">
+        style="border-color:${checked?'#ffffff0a':pc.color+'44'}"
+        onclick="toggle('${s.name.replace(/'/g,"\\'")}','${activePerson}')">
+        <div class="checkbox" style="border-color:${checked?'#4ADE80':pc.color};background:${checked?'#4ADE8022':'transparent'}">
           ${checked?"✓":""}
         </div>
         <div class="card-body">
@@ -213,7 +314,7 @@
           <span style="color:#9CA3AF">${done}/${list.length} taken</span>
         </div>
         <div class="bar-bg">
-          <div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${pc.color},${gradEnd})"></div>
+          <div class="bar-fill" style="width:${pct}%;background:${pc.color}"></div>
         </div>
         <div style="text-align:right;margin-top:6px;font-size:12px;font-weight:700;color:${pc.color}">${pct}%${pct===100?" 🎉":""}</div>
       </div>
@@ -224,7 +325,7 @@
   function renderHistory() {
     const pc = PERSON_CONFIG[activePerson];
     const last7 = getDateRange(7);
-    const histSupps = getAllSupps(activePerson === "both" ? "both" : activePerson);
+    const supps = SUPPLEMENTS[activePerson];
 
     const barsHtml = last7.map(day => {
       const pct = getDayCompletion(day, activePerson) / 100;
@@ -233,16 +334,16 @@
       return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
         <div style="width:32px;height:64px;border-radius:8px;background:#ffffff0a;position:relative;overflow:hidden;border:1px solid ${isToday?pc.color:'#ffffff0f'}">
-          <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${pct===1?'#4ADE80':pc.color};border-radius:0 0 6px 6px;transition:height 0.5s"></div>
+          <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${pct===1?'#4ADE80':pc.color};border-radius:0 0 6px 6px"></div>
         </div>
         <span style="font-size:10px;color:${isToday?'#fff':'#6B7280'};font-weight:${isToday?700:400}">${label}</span>
         <span style="font-size:9px;color:#4ADE80;min-height:12px">${pct>0?Math.round(pct*100)+'%':''}</span>
       </div>`;
     }).join("");
 
-    const adherenceHtml = histSupps.map(s => {
-      const rate = getAdherenceRate(s.name, s.personKey, 7);
-      const streak = getStreak(s.name, s.personKey);
+    const adherenceHtml = supps.map(s => {
+      const rate = getAdherenceRate(s.name, activePerson, 7);
+      const streak = getStreak(s.name, activePerson);
       const color = rate>=80?"#4ADE80":rate>=50?"#FBBF24":"#F87171";
       return `
       <div class="box" style="margin-bottom:8px">
@@ -259,59 +360,53 @@
       </div>`;
     }).join("");
 
-    const hasHistory = Object.keys(history).length > 0;
-
     document.getElementById("view_history").innerHTML = `
       <div class="section-title">LAST 7 DAYS</div>
       <div class="box" style="margin-bottom:20px">
         <div style="display:flex;justify-content:space-between;align-items:flex-end">${barsHtml}</div>
       </div>
       <div class="section-title">7-DAY ADHERENCE</div>
-      ${hasHistory ? adherenceHtml : `
+      ${Object.keys(history).length===0 ? `
         <div style="text-align:center;padding:40px 20px;color:#6B7280">
           <div style="font-size:32px;margin-bottom:12px">📊</div>
-          <p style="font-size:14px">Start checking off today to build your history!</p>
-        </div>`}`;
+          <p>Start checking off today to build your history!</p>
+        </div>` : adherenceHtml}`;
   }
 
   function renderDashboard() {
     const pc = PERSON_CONFIG[activePerson];
     const range = getDateRange(activeDashRange);
-    const histSupps = getAllSupps(activePerson === "both" ? "both" : activePerson);
-
-    // Overall completion rate
     const overallRates = range.map(d => getDayCompletion(d, activePerson));
     const avgCompletion = Math.round(overallRates.reduce((a,b)=>a+b,0) / range.length);
-
-    // Best day
     const bestPct = Math.max(...overallRates);
     const bestDay = range[overallRates.indexOf(bestPct)];
     const bestLabel = bestPct > 0 ? new Date(bestDay+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "N/A";
-
-    // Current streak (days with >80% completion)
     let currentStreak = 0;
     for (let i = range.length-1; i >= 0; i--) {
       if (overallRates[i] >= 80) currentStreak++;
       else break;
     }
 
-    // Timeline chart - mini bars for each day
     const timelineHtml = range.map((day, i) => {
       const pct = overallRates[i] / 100;
-      const isToday = day === todayKey();
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
         <div style="width:100%;max-width:12px;height:40px;background:#ffffff0a;border-radius:3px;position:relative;overflow:hidden;margin:0 auto">
           <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${pct>=0.8?'#4ADE80':pct>=0.5?pc.color:'#F87171'};border-radius:2px 2px 0 0"></div>
         </div>
-        ${activeDashRange <= 30 && (i===0 || i===Math.floor(range.length/2) || i===range.length-1) ?
-          `<span style="font-size:8px;color:#6B7280">${new Date(day+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>` : ""}
       </div>`;
     }).join("");
 
-    // Per-supplement adherence for selected range
-    const suppAdherenceHtml = histSupps.map(s => {
-      const rate = getAdherenceRate(s.name, s.personKey, activeDashRange);
-      const streak = getStreak(s.name, s.personKey);
+    const calendarHtml = getDateRange(30).map(day => {
+      const pct = getDayCompletion(day, activePerson);
+      const isToday = day === todayKey();
+      const bg = pct>=80?"#4ADE80":pct>=50?pc.color:pct>0?"#F87171":"#ffffff08";
+      const dayNum = new Date(day+"T12:00:00").getDate();
+      return `<div title="${day}: ${pct}%" style="width:calc(100%/7 - 3px);aspect-ratio:1;border-radius:5px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;color:${pct>0?'white':'#6B7280'};font-weight:600;border:${isToday?'2px solid white':'none'}">${dayNum}</div>`;
+    }).join("");
+
+    const suppAdherenceHtml = SUPPLEMENTS[activePerson].map(s => {
+      const rate = getAdherenceRate(s.name, activePerson, activeDashRange);
+      const streak = getStreak(s.name, activePerson);
       const color = rate>=80?"#4ADE80":rate>=50?"#FBBF24":"#F87171";
       return `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff0a">
@@ -331,41 +426,18 @@
       </div>`;
     }).join("");
 
-    // Calendar view - last 30 days grid
-    const calendarHtml = getDateRange(30).map(day => {
-      const pct = getDayCompletion(day, activePerson);
-      const isToday = day === todayKey();
-      const bg = pct>=80?"#4ADE80":pct>=50?pc.color:pct>0?"#F87171":"#ffffff08";
-      const dayNum = new Date(day+"T12:00:00").getDate();
-      return `
-      <div title="${day}: ${pct}%" style="width:calc(100%/7 - 3px);aspect-ratio:1;border-radius:5px;
-        background:${bg};display:flex;align-items:center;justify-content:center;
-        font-size:9px;color:${pct>0?'white':'#6B7280'};font-weight:600;
-        border:${isToday?`2px solid white`:'none'}">
-        ${dayNum}
-      </div>`;
-    }).join("");
-
     document.getElementById("view_dashboard").innerHTML = `
-      <!-- Range selector -->
       <div style="display:flex;gap:6px;margin-bottom:20px">
-        ${[30,60,90].map(r => `
-          <button onclick="setDashRange(${r})" style="flex:1;padding:8px;border-radius:10px;border:none;
-            background:${activeDashRange===r?pc.color:'#ffffff0a'};
-            color:${activeDashRange===r?'white':'#9CA3AF'};
-            font-size:13px;font-weight:600;cursor:pointer;font-family:Georgia,serif">
-            ${r} Days
-          </button>`).join("")}
+        ${[30,60,90].map(r=>`
+          <button onclick="setDashRange(${r})" style="flex:1;padding:8px;border-radius:10px;border:none;background:${activeDashRange===r?pc.color:'#ffffff0a'};color:${activeDashRange===r?'white':'#9CA3AF'};font-size:13px;font-weight:600;cursor:pointer;font-family:Georgia,serif">${r} Days</button>`).join("")}
       </div>
-
-      <!-- Stats row -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
         <div class="box" style="text-align:center;padding:14px 8px">
           <div style="font-size:24px;font-weight:700;color:${pc.color}">${avgCompletion}%</div>
           <div style="font-size:10px;color:#6B7280;margin-top:3px">Avg Daily</div>
         </div>
         <div class="box" style="text-align:center;padding:14px 8px">
-          <div style="font-size:24px;font-weight:700;color:#FB923C">🔥${currentStreak}</div>
+          <div style="font-size:22px;font-weight:700;color:#FB923C">🔥${currentStreak}</div>
           <div style="font-size:10px;color:#6B7280;margin-top:3px">Day Streak</div>
         </div>
         <div class="box" style="text-align:center;padding:14px 8px">
@@ -373,18 +445,14 @@
           <div style="font-size:10px;color:#6B7280;margin-top:3px">Best Day</div>
         </div>
       </div>
-
-      <!-- Timeline -->
       <div class="section-title">${activeDashRange}-DAY TIMELINE</div>
       <div class="box" style="margin-bottom:20px">
-        <div style="display:flex;align-items:flex-end;gap:2px;height:60px">${timelineHtml}</div>
+        <div style="display:flex;align-items:flex-end;gap:2px;height:50px">${timelineHtml}</div>
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:#6B7280">
           <span>${new Date(range[0]+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
           <span>Today</span>
         </div>
       </div>
-
-      <!-- Calendar -->
       <div class="section-title">LAST 30 DAYS CALENDAR</div>
       <div class="box" style="margin-bottom:20px">
         <div style="display:flex;flex-wrap:wrap;gap:3px">${calendarHtml}</div>
@@ -392,13 +460,54 @@
           <span><span style="color:#4ADE80">■</span> 80%+</span>
           <span><span style="color:${pc.color}">■</span> 50-79%</span>
           <span><span style="color:#F87171">■</span> &lt;50%</span>
-          <span><span style="color:#ffffff08">■</span> No data</span>
         </div>
       </div>
-
-      <!-- Per supplement -->
       <div class="section-title">SUPPLEMENT ADHERENCE (${activeDashRange} DAYS)</div>
       <div class="box">${suppAdherenceHtml}</div>`;
+  }
+
+  function renderInfo() {
+    const cardsHtml = SUPPLEMENT_INFO.map(s => {
+      const whoColor = s.who === "Both" ? "#7C3AED" : s.who === "Sky only" ? "#DB2777" : "#0284C7";
+      return `
+      <div class="box" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:22px">${s.emoji}</span>
+            <span style="font-size:15px;font-weight:700">${s.name}</span>
+          </div>
+          <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${whoColor}22;color:${whoColor};border:1px solid ${whoColor}44">${s.who}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:#ffffff05;border-radius:10px;padding:8px">
+            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">DOSAGE</div>
+            <div style="font-size:11px;color:#F8F8F2">${s.dosage}</div>
+          </div>
+          <div style="background:#ffffff05;border-radius:10px;padding:8px">
+            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">TIMING</div>
+            <div style="font-size:11px;color:#F8F8F2">${s.time}</div>
+          </div>
+          <div style="background:#ffffff05;border-radius:10px;padding:8px">
+            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">BRAND</div>
+            <div style="font-size:11px;color:#F8F8F2">${s.brand}</div>
+          </div>
+          <div style="background:#ffffff05;border-radius:10px;padding:8px">
+            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">PURPOSE</div>
+            <div style="font-size:11px;color:#F8F8F2">${s.purpose}</div>
+          </div>
+        </div>
+        <div style="background:#ffffff05;border-radius:10px;padding:8px">
+          <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">📝 NOTES</div>
+          <div style="font-size:11px;color:#9CA3AF;line-height:1.5">${s.notes}</div>
+        </div>
+      </div>`;
+    }).join("");
+
+    document.getElementById("view_info").innerHTML = `
+      <div style="margin-bottom:16px">
+        <p style="font-size:12px;color:#6B7280">Full reference guide for all supplements. Tap any card for details.</p>
+      </div>
+      ${cardsHtml}`;
   }
 
   function renderAll() {
@@ -406,33 +515,32 @@
     if (currentView === "today") renderToday();
     else if (currentView === "history") renderHistory();
     else if (currentView === "dashboard") renderDashboard();
+    else if (currentView === "info") renderInfo();
   }
 
-  // Expose functions to global scope
   window.toggle = toggle;
   window.setPerson = setPerson;
   window.setTime = setTime;
   window.setView = setView;
   window.setDashRange = setDashRange;
 
-  // Init
   document.getElementById("dateLabel").textContent =
     new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
   loadFromFirebase();
 </script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing:border-box; margin:0; padding:0; }
 body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,serif; padding-bottom:40px; }
 .header { background:linear-gradient(160deg,#1A1A2E,#16213E); padding:28px 20px 16px; border-bottom:1px solid #ffffff0f; }
 .inner { max-width:500px; margin:0 auto; }
-.view-toggle { display:flex; gap:6px; background:#ffffff0a; border-radius:12px; padding:4px; margin-top:12px; }
-.view-btn { flex:1; padding:7px; border-radius:9px; border:none; font-size:12px; font-weight:600; cursor:pointer; font-family:Georgia,serif; background:transparent; color:#6B7280; transition:all 0.2s; }
+.view-toggle { display:flex; gap:4px; background:#ffffff0a; border-radius:12px; padding:4px; margin-top:12px; }
+.view-btn { flex:1; padding:7px 2px; border-radius:9px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:Georgia,serif; background:transparent; color:#6B7280; transition:all 0.2s; }
 .view-btn.active { background:#ffffff15; color:#fff; }
 .content { max-width:500px; margin:0 auto; padding:16px 16px 0; }
 .person-tabs { display:flex; gap:8px; margin-bottom:16px; }
 .person-btn { flex:1; padding:9px 4px; border-radius:12px; border:none; font-weight:700; font-size:14px; cursor:pointer; font-family:Georgia,serif; transition:all 0.2s; }
 .time-filters { display:flex; gap:6px; margin-bottom:16px; }
-.time-btn { flex:1; padding:6px 2px; border-radius:10px; border:1px solid transparent; background:transparent; color:#6B7280; font-size:10px; font-weight:600; cursor:pointer; font-family:Georgia,serif; transition:all 0.2s; }
+.time-btn { flex:1; padding:6px 2px; border-radius:10px; border:1px solid transparent; background:transparent; color:#6B7280; font-size:10px; font-weight:600; cursor:pointer; font-family:Georgia,serif; }
 .time-btn.active { background:#ffffff18; color:#fff; border-color:#ffffff20; }
 .box { background:#ffffff08; border-radius:16px; padding:16px; border:1px solid #ffffff0f; }
 .bar-bg { height:6px; background:#ffffff0f; border-radius:99px; overflow:hidden; }
@@ -462,17 +570,19 @@ body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,
       <span id="saveStatus" style="font-size:11px;color:#4ADE80;margin-top:4px">⏳ Loading...</span>
     </div>
     <div class="view-toggle">
-      <button class="view-btn active" id="btn_today" onclick="setView('today')">📋 Today</button>
-      <button class="view-btn" id="btn_history" onclick="setView('history')">📅 History</button>
-      <button class="view-btn" id="btn_dashboard" onclick="setView('dashboard')">📊 Dashboard</button>
+      <button class="view-btn active" id="btn_today"     onclick="setView('today')">📋 Today</button>
+      <button class="view-btn"        id="btn_history"   onclick="setView('history')">📅 History</button>
+      <button class="view-btn"        id="btn_dashboard" onclick="setView('dashboard')">📊 Dashboard</button>
+      <button class="view-btn"        id="btn_info"      onclick="setView('info')">💡 Info</button>
     </div>
   </div>
 </div>
 <div class="content">
   <div class="person-tabs" id="personTabs"></div>
   <div id="view_today"></div>
-  <div id="view_history" style="display:none"></div>
+  <div id="view_history"   style="display:none"></div>
   <div id="view_dashboard" style="display:none"></div>
+  <div id="view_info"      style="display:none"></div>
 </div>
 </body>
 </html>
