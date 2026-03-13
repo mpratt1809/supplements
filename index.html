@@ -236,7 +236,7 @@ header {
 
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs }
+import { getFirestore, doc, setDoc, collection, query, where, getDocs }
   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -361,7 +361,7 @@ async function loadData() {
   status.textContent = "⏳";
   // Always show app immediately — don't block on Firebase
   document.getElementById("skeleton").style.display = "none";
-  document.getElementById("appShell").style.display = "";
+  document.getElementById("app").style.display = "";
   renderAll();
   // Then fetch in background
   try {
