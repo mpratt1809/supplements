@@ -4,595 +4,685 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Supplements</title>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, collection, query, where, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyCe_BnukGWzJ2odm1SpkW9Z0Qok_-sAKa8",
-    authDomain: "supplements-tracker-15b36.firebaseapp.com",
-    databaseURL: "https://supplements-tracker-15b36-default-rtdb.firebaseio.com",
-    projectId: "supplements-tracker-15b36",
-    storageBucket: "supplements-tracker-15b36.firebasestorage.app",
-    messagingSenderId: "554270825155",
-    appId: "1:554270825155:web:264f0ce78709d8d4cbe076"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // All supplements per person
-  const SUPPLEMENTS = {
-    sky: [
-      { name: "Magnesium Glycinate",      time: "evening",   emoji: "🌙", reason: "Sleep & muscle relaxation" },
-      { name: "Magnesium L-Threonate",    time: "evening",   emoji: "🧠", reason: "Memory consolidation during sleep" },
-      { name: "ADK",                      time: "morning",   emoji: "☀️", reason: "Fat-soluble vitamins with morning meal" },
-      { name: "Stress Care",              time: "morning",   emoji: "🌿", reason: "Adaptogens regulate morning cortisol" },
-      { name: "B-Complex Plus",           time: "morning",   emoji: "⚡", reason: "Energy & stress response, with food" },
-      { name: "Omega-3 / Fish Oil",       time: "evening",   emoji: "🐟", reason: "Best absorbed with dinner" },
-      { name: "Bone-Up",                  time: "afternoon", emoji: "🦴", reason: "Calcium with food, away from other minerals" },
-      { name: "Boron",                    time: "afternoon", emoji: "⚗️", reason: "Pairs with Bone-Up, enhances calcium uptake", incoming: true },
-      { name: "Pumpkin Seed Oil",         time: "evening",   emoji: "🎃", reason: "Bladder support, best with dinner" },
-      { name: "Collagen Complex",         time: "evening",   emoji: "💪", reason: "Connective tissue repair peaks overnight", incoming: true },
-    ],
-    you: [
-      { name: "Magnesium Glycinate",      time: "evening",   emoji: "🌙", reason: "Sleep & muscle relaxation" },
-      { name: "Magnesium L-Threonate",    time: "evening",   emoji: "🧠", reason: "Memory consolidation during sleep" },
-      { name: "ADK",                      time: "morning",   emoji: "☀️", reason: "Fat-soluble vitamins with morning meal" },
-      { name: "Stress Care",              time: "morning",   emoji: "🌿", reason: "Adaptogens regulate morning cortisol" },
-      { name: "B-Complex Plus",           time: "morning",   emoji: "⚡", reason: "Energy & stress response, with food" },
-      { name: "Omega-3 / Fish Oil",       time: "evening",   emoji: "🐟", reason: "Best absorbed with dinner" },
-      { name: "Cortisolv",               time: "morning",   emoji: "🧘", reason: "Cortisol peaks at 8-9am, regulate early" },
-    ]
-  };
-
-  const SUPPLEMENT_INFO = [
-    {
-      name: "Magnesium Glycinate", emoji: "🌙", who: "Both", time: "Evening — before bed",
-      dosage: "200-400mg elemental magnesium", brand: "Pure Encapsulations",
-      purpose: "Sleep quality, muscle relaxation, stress reduction, nervous system support",
-      notes: "Most bioavailable form of magnesium. Gentle on digestion."
-    },
-    {
-      name: "Magnesium L-Threonate", emoji: "🧠", who: "Both", time: "Evening — before bed",
-      dosage: "144mg elemental magnesium (2g Magtein®)", brand: "Life Extension Neuro-Mag",
-      purpose: "Cognitive function, memory consolidation, brain health",
-      notes: "Only form shown to cross the blood-brain barrier. Pairs well with Magnesium Glycinate."
-    },
-    {
-      name: "ADK", emoji: "☀️", who: "Both", time: "Morning — with food",
-      dosage: "As directed on label", brand: "DaVinci Laboratories",
-      purpose: "Immune function, bone health, calcium regulation, mood support",
-      notes: "Vitamin K2 (MK-7) directs calcium to bones and away from arteries. Essential when taking D3."
-    },
-    {
-      name: "Stress Care", emoji: "🌿", who: "Both", time: "Morning — with food",
-      dosage: "As directed on label", brand: "Himalaya",
-      purpose: "HPA axis support, cortisol regulation, adaptogenic stress response",
-      notes: "Contains ashwagandha, holy basil, and other adaptogens. Check for overlap with Cortisolv."
-    },
-    {
-      name: "B-Complex Plus", emoji: "⚡", who: "Both", time: "Morning — with food",
-      dosage: "As directed on label", brand: "Pure Encapsulations",
-      purpose: "Energy production, nervous system support, stress resilience",
-      notes: "B vitamins are depleted rapidly by stress. Avoid taking in the evening as may disrupt sleep."
-    },
-    {
-      name: "Omega-3 / Fish Oil", emoji: "🐟", who: "Both", time: "Evening — with dinner",
-      dosage: "1-2g EPA+DHA combined", brand: "As purchased",
-      purpose: "Heart health, inflammation reduction, brain function, joint support",
-      notes: "Take with largest meal for best absorption. Look for triglyceride form over ethyl ester."
-    },
-    {
-      name: "Bone-Up", emoji: "🦴", who: "Sky only", time: "Afternoon — with food",
-      dosage: "As directed on label", brand: "Jarrow Formulas",
-      purpose: "Bone density, skeletal support, DDD management",
-      notes: "Uses microcrystalline hydroxyapatite (MCHA) — superior absorption vs standard calcium carbonate."
-    },
-    {
-      name: "Boron", emoji: "⚗️", who: "Sky only", time: "Afternoon — with Bone-Up",
-      dosage: "3-6mg daily", brand: "TBD",
-      purpose: "Bone metabolism, enhances calcium & magnesium absorption, activates Vitamin D",
-      notes: "📦 On the way. Pairs synergistically with Bone-Up and ADK."
-    },
-    {
-      name: "Pumpkin Seed Oil", emoji: "🎃", who: "Sky only", time: "Evening — with dinner",
-      dosage: "3,000mg", brand: "Micro Ingredients",
-      purpose: "Bladder support, urinary frequency related to DDD nerve pressure",
-      notes: "Cold-pressed. Magnesium Glycinate also supports bladder muscle relaxation."
-    },
-    {
-      name: "Collagen Complex", emoji: "💪", who: "Sky only", time: "Evening — before bed",
-      dosage: "As directed on label", brand: "Professional Health Products",
-      purpose: "Joint & disc support, cartilage integrity, connective tissue repair for DDD",
-      notes: "📦 On the way. Contains BioCell Collagen®, Hyaluronic Acid, OptiMSM®, Glucosamine. DRcaps for better absorption."
-    },
-    {
-      name: "Cortisolv", emoji: "🧘", who: "You only", time: "Morning — upon waking",
-      dosage: "As directed on label", brand: "Xymogen",
-      purpose: "Cortisol regulation, stress response, adrenal support",
-      notes: "Check label for ashwagandha overlap with Stress Care. Consider alternating timing if both contain it."
-    },
-  ];
-
-  const TIME_CONFIG = {
-    morning:   { bg: "#FFF7ED22", accent: "#F97316", border: "#F9731633", icon: "🌅" },
-    afternoon: { bg: "#F0FDF422", accent: "#16A34A", border: "#16A34A33", icon: "🌤️" },
-    evening:   { bg: "#EFF6FF22", accent: "#3B82F6", border: "#3B82F633", icon: "🌙" },
-  };
-
-  const PERSON_CONFIG = {
-    sky: { label: "Sky",  color: "#DB2777" },
-    you: { label: "You",  color: "#0284C7" },
-  };
-
-  let history = {};
-  let activePerson = "sky";
-  let activeTime = "all";
-  let currentView = "today";
-  let activeDashRange = 30;
-
-  function todayKey() { return new Date().toISOString().slice(0,10); }
-
-  function getDateRange(days) {
-    return Array.from({length: days}, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (days - 1 - i));
-      return d.toISOString().slice(0,10);
-    });
-  }
-
-  // Calculate the cutoff date (90 days ago) for fetching
-  function getCutoffDate() {
-    const d = new Date();
-    d.setDate(d.getDate() - 90);
-    return d.toISOString().slice(0,10);
-  }
-
-  function getStreak(name, person) {
-    const days = Object.keys(history).sort().reverse();
-    let streak = 0;
-    for (const d of days) {
-      if (history[d]?.[person]?.[name]) streak++;
-      else break;
-    }
-    return streak;
-  }
-
-  function getAdherenceRate(name, person, days) {
-    const range = getDateRange(days);
-    const taken = range.filter(d => history[d]?.[person]?.[name]).length;
-    return Math.round((taken / range.length) * 100);
-  }
-
-  function getDayCompletion(day, person) {
-    const supps = SUPPLEMENTS[person];
-    const total = supps.length;
-    if (!total) return 0;
-    const done = supps.filter(s => history[day]?.[person]?.[s.name]).length;
-    return Math.round((done / total) * 100);
-  }
-
-  async function loadFromFirebase() {
-    const statusEl = document.getElementById("saveStatus");
-    statusEl.textContent = "⏳ Syncing...";
-
-    try {
-      // Only fetch documents from the last 90 days using document ID range
-      const cutoff = getCutoffDate();
-      const histRef = collection(db, "history");
-
-      // Firestore document IDs are strings; date keys sort lexicographically
-      // so we can fetch only recent docs by ID range
-      const snap = await getDocs(histRef);
-      snap.forEach(docSnap => {
-        // Only keep docs within our 90-day window
-        if (docSnap.id >= cutoff) {
-          history[docSnap.id] = docSnap.data();
-        }
-      });
-      statusEl.textContent = "✓ Synced";
-    } catch(e) {
-      statusEl.textContent = "⚠️ Offline";
-      console.warn("Firebase load error:", e);
-    }
-
-    // Hide skeleton, show app
-    document.getElementById("loadingSkeleton").style.display = "none";
-    document.getElementById("appContent").style.display = "";
-    renderAll();
-  }
-
-  async function saveToFirebase(dateKey) {
-    document.getElementById("saveStatus").textContent = "💾 Saving...";
-    try {
-      await setDoc(doc(db, "history", dateKey), history[dateKey] || {});
-      document.getElementById("saveStatus").textContent = "✓ Synced";
-    } catch(e) {
-      document.getElementById("saveStatus").textContent = "⚠️ Save failed";
-    }
-  }
-
-  function toggle(name, person) {
-    const d = todayKey();
-    if (!history[d]) history[d] = {};
-    if (!history[d][person]) history[d][person] = {};
-    history[d][person][name] = !history[d][person][name];
-    saveToFirebase(d);
-    renderAll();
-  }
-
-  function isChecked(name, person) {
-    return !!history[todayKey()]?.[person]?.[name];
-  }
-
-  function getList() {
-    return SUPPLEMENTS[activePerson].filter(s => activeTime === "all" || s.time === activeTime);
-  }
-
-  function setView(v) {
-    currentView = v;
-    ["today","history","dashboard","info"].forEach(x => {
-      document.getElementById("btn_"+x).className = "view-btn" + (v===x?" active":"");
-      document.getElementById("view_"+x).style.display = v===x?"":"none";
-    });
-    renderAll();
-  }
-
-  function setPerson(p) { activePerson = p; renderAll(); }
-  function setTime(t) { activeTime = t; renderAll(); }
-  function setDashRange(r) { activeDashRange = r; renderDashboard(); }
-
-  function renderPersonTabs() {
-    document.getElementById("personTabs").innerHTML = Object.entries(PERSON_CONFIG).map(([key, pc]) => `
-      <button class="person-btn" onclick="setPerson('${key}')"
-        style="background:${activePerson===key?pc.color:'#ffffff0a'};
-               color:${activePerson===key?'white':'#9CA3AF'};
-               box-shadow:${activePerson===key?`0 4px 16px ${pc.color}55`:'none'}">
-        ${pc.label}
-      </button>`).join("");
-  }
-
-  function renderToday() {
-    const pc = PERSON_CONFIG[activePerson];
-    const list = getList();
-    const done = list.filter(s => isChecked(s.name, activePerson)).length;
-    const pct = list.length ? Math.round((done/list.length)*100) : 0;
-
-    const timeHtml = ["all","morning","afternoon","evening"].map(t => `
-      <button class="time-btn${activeTime===t?' active':''}" onclick="setTime('${t}')">
-        ${t==="all"?"All":TIME_CONFIG[t].icon+" "+t.charAt(0).toUpperCase()+t.slice(1)}
-      </button>`).join("");
-
-    const cardsHtml = list.map(s => {
-      const checked = isChecked(s.name, activePerson);
-      const tc = TIME_CONFIG[s.time];
-      const streak = getStreak(s.name, activePerson);
-      return `
-      <div class="card ${checked?'checked':'unchecked'}"
-        style="border-color:${checked?'#ffffff0a':pc.color+'44'}"
-        onclick="toggle('${s.name.replace(/'/g,"\\'")}','${activePerson}')">
-        <div class="checkbox" style="border-color:${checked?'#4ADE80':pc.color};background:${checked?'#4ADE8022':'transparent'}">
-          ${checked?"✓":""}
-        </div>
-        <div class="card-body">
-          <div class="card-title-row">
-            <span class="card-name${checked?' crossed':''}">${s.emoji} ${s.name}</span>
-            <span class="badge" style="background:${tc.bg};color:${tc.accent};border-color:${tc.border}">${tc.icon} ${s.time}</span>
-            ${s.incoming?`<span class="badge" style="background:#FEF9C322;color:#FBBF24;border-color:#FBBF2433">📦 Soon</span>`:""}
-            ${streak>1?`<span class="badge" style="background:#F9731622;color:#FB923C;border-color:#FB923C33">🔥 ${streak}d</span>`:""}
-          </div>
-          <p class="card-reason">${s.reason}</p>
-        </div>
-      </div>`;
-    }).join("");
-
-    document.getElementById("view_today").innerHTML = `
-      <div class="box" style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px">
-          <span style="font-weight:600">Today's Progress</span>
-          <span style="color:#9CA3AF">${done}/${list.length} taken</span>
-        </div>
-        <div class="bar-bg">
-          <div class="bar-fill" style="width:${pct}%;background:${pc.color}"></div>
-        </div>
-        <div style="text-align:right;margin-top:6px;font-size:12px;font-weight:700;color:${pc.color}">${pct}%${pct===100?" 🎉":""}</div>
-      </div>
-      <div class="time-filters">${timeHtml}</div>
-      <div class="supp-list">${cardsHtml}</div>`;
-  }
-
-  function renderHistory() {
-    const pc = PERSON_CONFIG[activePerson];
-    const last7 = getDateRange(7);
-    const supps = SUPPLEMENTS[activePerson];
-
-    const barsHtml = last7.map(day => {
-      const pct = getDayCompletion(day, activePerson) / 100;
-      const isToday = day === todayKey();
-      const label = new Date(day+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"}).slice(0,2);
-      return `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <div style="width:32px;height:64px;border-radius:8px;background:#ffffff0a;position:relative;overflow:hidden;border:1px solid ${isToday?pc.color:'#ffffff0f'}">
-          <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${pct===1?'#4ADE80':pc.color};border-radius:0 0 6px 6px"></div>
-        </div>
-        <span style="font-size:10px;color:${isToday?'#fff':'#6B7280'};font-weight:${isToday?700:400}">${label}</span>
-        <span style="font-size:9px;color:#4ADE80;min-height:12px">${pct>0?Math.round(pct*100)+'%':''}</span>
-      </div>`;
-    }).join("");
-
-    const adherenceHtml = supps.map(s => {
-      const rate = getAdherenceRate(s.name, activePerson, 7);
-      const streak = getStreak(s.name, activePerson);
-      const color = rate>=80?"#4ADE80":rate>=50?"#FBBF24":"#F87171";
-      return `
-      <div class="box" style="margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:13px;font-weight:600">${s.emoji} ${s.name}</span>
-          <div style="display:flex;gap:8px;align-items:center">
-            ${streak>0?`<span style="font-size:11px;color:#FB923C">🔥 ${streak}d</span>`:""}
-            <span style="font-size:13px;font-weight:700;color:${color}">${rate}%</span>
-          </div>
-        </div>
-        <div class="bar-bg" style="height:4px">
-          <div class="bar-fill" style="width:${rate}%;background:${color}"></div>
-        </div>
-      </div>`;
-    }).join("");
-
-    document.getElementById("view_history").innerHTML = `
-      <div class="section-title">LAST 7 DAYS</div>
-      <div class="box" style="margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end">${barsHtml}</div>
-      </div>
-      <div class="section-title">7-DAY ADHERENCE</div>
-      ${Object.keys(history).length===0 ? `
-        <div style="text-align:center;padding:40px 20px;color:#6B7280">
-          <div style="font-size:32px;margin-bottom:12px">📊</div>
-          <p>Start checking off today to build your history!</p>
-        </div>` : adherenceHtml}`;
-  }
-
-  function renderDashboard() {
-    const pc = PERSON_CONFIG[activePerson];
-    const range = getDateRange(activeDashRange);
-    const overallRates = range.map(d => getDayCompletion(d, activePerson));
-    const avgCompletion = Math.round(overallRates.reduce((a,b)=>a+b,0) / range.length);
-    const bestPct = Math.max(...overallRates);
-    const bestDay = range[overallRates.indexOf(bestPct)];
-    const bestLabel = bestPct > 0 ? new Date(bestDay+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"}) : "N/A";
-    let currentStreak = 0;
-    for (let i = range.length-1; i >= 0; i--) {
-      if (overallRates[i] >= 80) currentStreak++;
-      else break;
-    }
-
-    const timelineHtml = range.map((day, i) => {
-      const pct = overallRates[i] / 100;
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center">
-        <div style="width:100%;max-width:12px;height:40px;background:#ffffff0a;border-radius:3px;position:relative;overflow:hidden;margin:0 auto">
-          <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${pct>=0.8?'#4ADE80':pct>=0.5?pc.color:'#F87171'};border-radius:2px 2px 0 0"></div>
-        </div>
-      </div>`;
-    }).join("");
-
-    const calendarHtml = getDateRange(30).map(day => {
-      const pct = getDayCompletion(day, activePerson);
-      const isToday = day === todayKey();
-      const bg = pct>=80?"#4ADE80":pct>=50?pc.color:pct>0?"#F87171":"#ffffff08";
-      const dayNum = new Date(day+"T12:00:00").getDate();
-      return `<div title="${day}: ${pct}%" style="width:calc(100%/7 - 3px);aspect-ratio:1;border-radius:5px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:9px;color:${pct>0?'white':'#6B7280'};font-weight:600;border:${isToday?'2px solid white':'none'}">${dayNum}</div>`;
-    }).join("");
-
-    const suppAdherenceHtml = SUPPLEMENTS[activePerson].map(s => {
-      const rate = getAdherenceRate(s.name, activePerson, activeDashRange);
-      const streak = getStreak(s.name, activePerson);
-      const color = rate>=80?"#4ADE80":rate>=50?"#FBBF24":"#F87171";
-      return `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff0a">
-        <span style="font-size:18px;width:24px">${s.emoji}</span>
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-            <span style="font-size:12px;font-weight:600">${s.name}</span>
-            <div style="display:flex;gap:6px;align-items:center">
-              ${streak>1?`<span style="font-size:10px;color:#FB923C">🔥${streak}d</span>`:""}
-              <span style="font-size:12px;font-weight:700;color:${color}">${rate}%</span>
-            </div>
-          </div>
-          <div class="bar-bg" style="height:3px">
-            <div class="bar-fill" style="width:${rate}%;background:${color}"></div>
-          </div>
-        </div>
-      </div>`;
-    }).join("");
-
-    document.getElementById("view_dashboard").innerHTML = `
-      <div style="display:flex;gap:6px;margin-bottom:20px">
-        ${[30,60,90].map(r=>`
-          <button onclick="setDashRange(${r})" style="flex:1;padding:8px;border-radius:10px;border:none;background:${activeDashRange===r?pc.color:'#ffffff0a'};color:${activeDashRange===r?'white':'#9CA3AF'};font-size:13px;font-weight:600;cursor:pointer;font-family:Georgia,serif">${r} Days</button>`).join("")}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
-        <div class="box" style="text-align:center;padding:14px 8px">
-          <div style="font-size:24px;font-weight:700;color:${pc.color}">${avgCompletion}%</div>
-          <div style="font-size:10px;color:#6B7280;margin-top:3px">Avg Daily</div>
-        </div>
-        <div class="box" style="text-align:center;padding:14px 8px">
-          <div style="font-size:22px;font-weight:700;color:#FB923C">🔥${currentStreak}</div>
-          <div style="font-size:10px;color:#6B7280;margin-top:3px">Day Streak</div>
-        </div>
-        <div class="box" style="text-align:center;padding:14px 8px">
-          <div style="font-size:24px;font-weight:700;color:#4ADE80">${bestPct}%</div>
-          <div style="font-size:10px;color:#6B7280;margin-top:3px">Best Day</div>
-        </div>
-      </div>
-      <div class="section-title">${activeDashRange}-DAY TIMELINE</div>
-      <div class="box" style="margin-bottom:20px">
-        <div style="display:flex;align-items:flex-end;gap:2px;height:50px">${timelineHtml}</div>
-        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:#6B7280">
-          <span>${new Date(range[0]+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
-          <span>Today</span>
-        </div>
-      </div>
-      <div class="section-title">LAST 30 DAYS CALENDAR</div>
-      <div class="box" style="margin-bottom:20px">
-        <div style="display:flex;flex-wrap:wrap;gap:3px">${calendarHtml}</div>
-        <div style="display:flex;gap:12px;margin-top:12px;font-size:10px;color:#6B7280">
-          <span><span style="color:#4ADE80">■</span> 80%+</span>
-          <span><span style="color:${pc.color}">■</span> 50-79%</span>
-          <span><span style="color:#F87171">■</span> &lt;50%</span>
-        </div>
-      </div>
-      <div class="section-title">SUPPLEMENT ADHERENCE (${activeDashRange} DAYS)</div>
-      <div class="box">${suppAdherenceHtml}</div>`;
-  }
-
-  function renderInfo() {
-    const cardsHtml = SUPPLEMENT_INFO.map(s => {
-      const whoColor = s.who === "Both" ? "#7C3AED" : s.who === "Sky only" ? "#DB2777" : "#0284C7";
-      return `
-      <div class="box" style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:22px">${s.emoji}</span>
-            <span style="font-size:15px;font-weight:700">${s.name}</span>
-          </div>
-          <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;background:${whoColor}22;color:${whoColor};border:1px solid ${whoColor}44">${s.who}</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div style="background:#ffffff05;border-radius:10px;padding:8px">
-            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">DOSAGE</div>
-            <div style="font-size:11px;color:#F8F8F2">${s.dosage}</div>
-          </div>
-          <div style="background:#ffffff05;border-radius:10px;padding:8px">
-            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">TIMING</div>
-            <div style="font-size:11px;color:#F8F8F2">${s.time}</div>
-          </div>
-          <div style="background:#ffffff05;border-radius:10px;padding:8px">
-            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">BRAND</div>
-            <div style="font-size:11px;color:#F8F8F2">${s.brand}</div>
-          </div>
-          <div style="background:#ffffff05;border-radius:10px;padding:8px">
-            <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">PURPOSE</div>
-            <div style="font-size:11px;color:#F8F8F2">${s.purpose}</div>
-          </div>
-        </div>
-        <div style="background:#ffffff05;border-radius:10px;padding:8px">
-          <div style="font-size:9px;color:#6B7280;font-weight:600;margin-bottom:3px">📝 NOTES</div>
-          <div style="font-size:11px;color:#9CA3AF;line-height:1.5">${s.notes}</div>
-        </div>
-      </div>`;
-    }).join("");
-
-    document.getElementById("view_info").innerHTML = `
-      <div style="margin-bottom:16px">
-        <p style="font-size:12px;color:#6B7280">Full reference guide for all supplements. Tap any card for details.</p>
-      </div>
-      ${cardsHtml}`;
-  }
-
-  function renderAll() {
-    renderPersonTabs();
-    if (currentView === "today") renderToday();
-    else if (currentView === "history") renderHistory();
-    else if (currentView === "dashboard") renderDashboard();
-    else if (currentView === "info") renderInfo();
-  }
-
-  window.toggle = toggle;
-  window.setPerson = setPerson;
-  window.setTime = setTime;
-  window.setView = setView;
-  window.setDashRange = setDashRange;
-
-  document.getElementById("dateLabel").textContent =
-    new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
-  loadFromFirebase();
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-* { box-sizing:border-box; margin:0; padding:0; }
-body { min-height:100vh; background:#0F0F14; color:#F8F8F2; font-family:Georgia,serif; padding-bottom:40px; }
-.header { background:linear-gradient(160deg,#1A1A2E,#16213E); padding:20px 20px 16px; border-bottom:1px solid #ffffff0f; }
-.inner { max-width:500px; margin:0 auto; }
-.back-link { display:inline-flex; align-items:center; gap:4px; color:#6B7280; text-decoration:none; font-size:11px; font-weight:600; letter-spacing:0.5px; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; margin-bottom:8px; transition:color 0.2s; }
-.back-link:hover { color:#82dc82; }
-.view-toggle { display:flex; gap:4px; background:#ffffff0a; border-radius:12px; padding:4px; margin-top:12px; }
-.view-btn { flex:1; padding:7px 2px; border-radius:9px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:Georgia,serif; background:transparent; color:#6B7280; transition:all 0.2s; }
-.view-btn.active { background:#ffffff15; color:#fff; }
-.content { max-width:500px; margin:0 auto; padding:16px 16px 0; }
-.person-tabs { display:flex; gap:8px; margin-bottom:16px; }
-.person-btn { flex:1; padding:9px 4px; border-radius:12px; border:none; font-weight:700; font-size:14px; cursor:pointer; font-family:Georgia,serif; transition:all 0.2s; }
-.time-filters { display:flex; gap:6px; margin-bottom:16px; }
-.time-btn { flex:1; padding:6px 2px; border-radius:10px; border:1px solid transparent; background:transparent; color:#6B7280; font-size:10px; font-weight:600; cursor:pointer; font-family:Georgia,serif; }
-.time-btn.active { background:#ffffff18; color:#fff; border-color:#ffffff20; }
-.box { background:#ffffff08; border-radius:16px; padding:16px; border:1px solid #ffffff0f; }
-.bar-bg { height:6px; background:#ffffff0f; border-radius:99px; overflow:hidden; }
-.bar-fill { height:100%; border-radius:99px; transition:width 0.5s ease; }
-.supp-list { display:flex; flex-direction:column; gap:10px; }
-.card { border-radius:16px; padding:13px 15px; display:flex; align-items:flex-start; gap:12px; cursor:pointer; transition:all 0.2s; border:1px solid; }
-.card.unchecked { background:#ffffff0a; }
-.card.checked { background:#ffffff05; opacity:0.55; }
-.checkbox { width:26px; height:26px; min-width:26px; border-radius:8px; border:2px solid; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#4ADE80; transition:all 0.2s; margin-top:1px; }
-.card-body { flex:1; }
-.card-title-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:3px; }
-.card-name { font-size:14px; font-weight:700; color:#F8F8F2; }
-.card-name.crossed { text-decoration:line-through; color:#6B7280; }
-.badge { font-size:10px; font-weight:600; padding:2px 7px; border-radius:20px; border:1px solid; }
-.card-reason { font-size:11px; color:#6B7280; line-height:1.4; }
-.section-title { font-size:12px; font-weight:700; color:#6B7280; letter-spacing:0.5px; margin-bottom:10px; }
-
-/* Loading skeleton */
-.skeleton { animation: shimmer 1.5s infinite; }
-@keyframes shimmer {
-  0% { opacity: 0.4; }
-  50% { opacity: 0.7; }
-  100% { opacity: 0.4; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0f14; --surface: #161a22; --surface2: #1e2330; --border: #2a3045;
+  --accent: #e8ff47; --accent2: #47c8ff;
+  --sky: #47c8ff; --meagan: #e8ff47;
+  --success: #2ed573; --danger: #ff4757; --warn: #ffa502;
+  --text: #f0f2f8; --muted: #6b7592;
+  --font-head: 'Bebas Neue', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --radius: 12px;
 }
-.skel-bar { height:12px; border-radius:6px; background:#ffffff0f; margin-bottom:12px; }
-.skel-card { height:72px; border-radius:16px; background:#ffffff08; border:1px solid #ffffff0f; margin-bottom:10px; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(71,200,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(232,255,71,0.05) 0%, transparent 60%);
+}
+
+/* ── Header ── */
+header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,15,20,0.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+}
+.header-inner { max-width: 600px; margin: 0 auto; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.back-link { color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; transition: color 0.2s; }
+.back-link:hover { color: var(--success); }
+.header-logo { font-family: var(--font-head); font-size: 22px; letter-spacing: 3px; }
+.header-logo span { color: var(--accent); }
+.save-status { font-size: 11px; color: var(--success); font-family: var(--font-body); }
+.date-label { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+
+/* ── Nav tabs ── */
+.tab-nav { display: flex; gap: 2px; background: var(--surface2); border-radius: var(--radius); padding: 3px; margin-top: 10px; }
+.tab-btn {
+  flex: 1; padding: 7px 4px; border-radius: 9px; border: none;
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  font-family: var(--font-body); background: transparent;
+  color: var(--muted); transition: all 0.2s; letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.tab-btn.active { background: var(--surface); color: var(--text); }
+
+/* ── Person toggle ── */
+.person-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.person-btn {
+  flex: 1; padding: 10px; border-radius: var(--radius); border: 2px solid var(--border);
+  font-weight: 700; font-size: 14px; cursor: pointer;
+  font-family: var(--font-body); background: var(--surface);
+  color: var(--muted); transition: all 0.2s; letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.person-btn.active-sky    { border-color: var(--sky);    color: var(--sky);    background: rgba(71,200,255,0.08); }
+.person-btn.active-meagan { border-color: var(--meagan); color: var(--meagan); background: rgba(232,255,71,0.08); }
+
+/* ── Time filter pills ── */
+.time-row { display: flex; gap: 6px; margin-bottom: 16px; }
+.time-pill {
+  flex: 1; padding: 6px 2px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); font-size: 10px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-body);
+  transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.time-pill.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+
+/* ── Progress bar ── */
+.prog-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.prog-bar-bg { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 8px 0 4px; }
+.prog-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+
+/* ── Supplement cards ── */
+.supp-list { display: flex; flex-direction: column; gap: 8px; }
+.supp-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 13px 15px;
+  display: flex; align-items: flex-start; gap: 12px;
+  cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;
+}
+.supp-card::before { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.2s; }
+.supp-card.sky-card::before    { background: radial-gradient(circle at 0% 50%, rgba(71,200,255,0.07), transparent 70%); }
+.supp-card.meagan-card::before { background: radial-gradient(circle at 0% 50%, rgba(232,255,71,0.07), transparent 70%); }
+.supp-card:hover::before { opacity: 1; }
+.supp-card.done { opacity: 0.45; }
+.supp-card.done .supp-name { text-decoration: line-through; color: var(--muted); }
+
+.check-box {
+  width: 26px; height: 26px; min-width: 26px;
+  border-radius: 7px; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: var(--success);
+  transition: all 0.2s; margin-top: 1px; position: relative; z-index: 1;
+}
+.check-box.checked { background: rgba(46,213,115,0.15); border-color: var(--success); }
+
+.supp-body { flex: 1; position: relative; z-index: 1; }
+.supp-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 3px; }
+.supp-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.supp-reason { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* badges */
+.badge {
+  font-size: 9px; font-weight: 600; padding: 2px 6px;
+  border-radius: 20px; border: 1px solid; letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.badge-morning   { background: rgba(249,115,22,0.12);  color: #fb923c; border-color: rgba(249,115,22,0.3); }
+.badge-afternoon { background: rgba(22,163,74,0.12);   color: #4ade80; border-color: rgba(22,163,74,0.3); }
+.badge-evening   { background: rgba(59,130,246,0.12);  color: #93c5fd; border-color: rgba(59,130,246,0.3); }
+.badge-soon      { background: rgba(251,191,36,0.12);  color: #fbbf24; border-color: rgba(251,191,36,0.3); }
+.badge-streak    { background: rgba(251,146,60,0.12);  color: #fb923c; border-color: rgba(251,146,60,0.3); }
+
+/* ── Generic box ── */
+.box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+
+/* ── Section title ── */
+.section-title { font-family: var(--font-head); font-size: 18px; letter-spacing: 2px; color: var(--muted); margin: 20px 0 10px; }
+
+/* ── Stat grid ── */
+.stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 8px; text-align: center; }
+.stat-val { font-family: var(--font-head); font-size: 28px; letter-spacing: 2px; }
+.stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+/* ── History bars ── */
+.day-bars { display: flex; justify-content: space-between; align-items: flex-end; gap: 6px; }
+.day-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.day-bar-track { width: 100%; max-width: 32px; height: 60px; background: var(--surface2); border-radius: 6px; position: relative; overflow: hidden; }
+.day-bar-fill  { position: absolute; bottom: 0; width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s ease; }
+.day-bar-label { font-size: 9px; color: var(--muted); font-weight: 600; }
+.day-bar-pct   { font-size: 9px; color: var(--success); min-height: 11px; }
+
+/* ── Calendar ── */
+.cal-grid { display: flex; flex-wrap: wrap; gap: 3px; }
+.cal-day {
+  width: calc(100%/7 - 3px); aspect-ratio: 1;
+  border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600;
+}
+
+/* ── Info cards ── */
+.info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.info-cell { background: var(--surface2); border-radius: 8px; padding: 8px; }
+.info-cell-label { font-size: 9px; color: var(--muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+.info-cell-val   { font-size: 11px; color: var(--text); line-height: 1.4; }
+
+/* ── Range pills ── */
+.range-row { display: flex; gap: 6px; margin-bottom: 16px; }
+.range-pill {
+  flex: 1; padding: 8px; border-radius: var(--radius); border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: var(--font-body); transition: all 0.2s;
+}
+.range-pill.active { border-color: var(--accent2); color: var(--accent2); background: rgba(71,200,255,0.08); }
+
+/* ── Adherence bar ── */
+.adh-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.adh-row:last-child { border-bottom: none; }
+.adh-icon { font-size: 18px; width: 24px; text-align: center; }
+.adh-info { flex: 1; }
+.adh-name { font-size: 12px; font-weight: 600; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+.adh-bar-bg  { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.adh-bar-fill{ height: 100%; border-radius: 99px; }
+
+/* ── Skeleton ── */
+.skeleton { animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0%,100%{opacity:.3} 50%{opacity:.6} }
+.skel-block { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); }
+
+/* ── Main content wrap ── */
+.content { max-width: 600px; margin: 0 auto; padding: 16px 16px 48px; position: relative; z-index: 1; }
+
+/* ── Tab panels ── */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="inner">
-    <a href="https://mpratt1809.github.io/hub/" class="back-link">← PRATTHUB</a>
-    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+
+<header>
+  <div class="header-inner">
+    <div class="header-top">
+      <a href="https://mpratt1809.github.io/hub/" class="back-link">← Pratt Hub</a>
       <div>
-        <h1 style="font-size:22px;font-weight:700">💊 Daily Supplements</h1>
-        <p id="dateLabel" style="color:#6B7280;font-size:13px;margin-top:4px"></p>
+        <span class="header-logo">💊 SUPPLE<span>MENTS</span></span>
       </div>
-      <span id="saveStatus" style="font-size:11px;color:#4ADE80;margin-top:4px">⏳ Loading...</span>
+      <span id="saveStatus" class="save-status">⏳</span>
     </div>
-    <div class="view-toggle">
-      <button class="view-btn active" id="btn_today"     onclick="setView('today')">📋 Today</button>
-      <button class="view-btn"        id="btn_history"   onclick="setView('history')">📅 History</button>
-      <button class="view-btn"        id="btn_dashboard" onclick="setView('dashboard')">📊 Dashboard</button>
-      <button class="view-btn"        id="btn_info"      onclick="setView('info')">💡 Info</button>
+    <div class="date-label" id="dateLabel"></div>
+    <div class="tab-nav">
+      <button class="tab-btn active" id="btn_today"     onclick="setView('today')">📋 Today</button>
+      <button class="tab-btn"        id="btn_history"   onclick="setView('history')">📅 History</button>
+      <button class="tab-btn"        id="btn_dashboard" onclick="setView('dashboard')">📊 Trends</button>
+      <button class="tab-btn"        id="btn_info"      onclick="setView('info')">💡 Info</button>
     </div>
   </div>
-</div>
+</header>
+
 <div class="content">
-  <!-- Loading skeleton shown while Firebase loads -->
-  <div id="loadingSkeleton" class="skeleton">
+  <!-- Skeleton -->
+  <div id="skeleton" class="skeleton">
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <div style="flex:1;height:40px;border-radius:12px;background:#ffffff0a"></div>
-      <div style="flex:1;height:40px;border-radius:12px;background:#ffffff0a"></div>
+      <div class="skel-block" style="flex:1;height:42px"></div>
+      <div class="skel-block" style="flex:1;height:42px"></div>
     </div>
-    <div class="skel-card"></div>
-    <div class="skel-bar" style="width:60%"></div>
-    <div class="skel-card"></div>
-    <div class="skel-card"></div>
-    <div class="skel-card"></div>
-    <div class="skel-card"></div>
+    <div class="skel-block" style="height:70px;margin-bottom:16px"></div>
+    <div class="skel-block" style="height:72px;margin-bottom:8px"></div>
+    <div class="skel-block" style="height:72px;margin-bottom:8px"></div>
+    <div class="skel-block" style="height:72px;margin-bottom:8px"></div>
+    <div class="skel-block" style="height:72px;margin-bottom:8px"></div>
+    <div class="skel-block" style="height:72px;margin-bottom:8px"></div>
   </div>
 
-  <!-- Actual app content, hidden until loaded -->
-  <div id="appContent" style="display:none">
-    <div class="person-tabs" id="personTabs"></div>
-    <div id="view_today"></div>
-    <div id="view_history"   style="display:none"></div>
-    <div id="view_dashboard" style="display:none"></div>
-    <div id="view_info"      style="display:none"></div>
+  <!-- App -->
+  <div id="app" style="display:none">
+    <div class="person-row" id="personRow"></div>
+    <div class="tab-panel active" id="tab_today"></div>
+    <div class="tab-panel"        id="tab_history"></div>
+    <div class="tab-panel"        id="tab_dashboard"></div>
+    <div class="tab-panel"        id="tab_info"></div>
   </div>
 </div>
+
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs }
+  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCe_BnukGWzJ2odm1SpkW9Z0Qok_-sAKa8",
+  authDomain: "supplements-tracker-15b36.firebaseapp.com",
+  projectId: "supplements-tracker-15b36",
+  storageBucket: "supplements-tracker-15b36.firebasestorage.app",
+  messagingSenderId: "554270825155",
+  appId: "1:554270825155:web:264f0ce78709d8d4cbe076"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── Data ─────────────────────────────────────────────────────
+const SUPPLEMENTS = {
+  sky: [
+    { name:"Magnesium Glycinate",   time:"evening",   emoji:"🌙", reason:"Sleep & muscle relaxation" },
+    { name:"Magnesium L-Threonate", time:"evening",   emoji:"🧠", reason:"Memory consolidation during sleep" },
+    { name:"ADK",                   time:"morning",   emoji:"☀️", reason:"Fat-soluble vitamins with morning meal" },
+    { name:"Stress Care",           time:"morning",   emoji:"🌿", reason:"Adaptogens regulate morning cortisol" },
+    { name:"B-Complex Plus",        time:"morning",   emoji:"⚡", reason:"Energy & stress response, with food" },
+    { name:"Omega-3 / Fish Oil",    time:"evening",   emoji:"🐟", reason:"Best absorbed with dinner" },
+    { name:"Bone-Up",               time:"afternoon", emoji:"🦴", reason:"Calcium with food, away from other minerals" },
+    { name:"Boron",                 time:"afternoon", emoji:"⚗️", reason:"Pairs with Bone-Up, enhances calcium uptake", incoming:true },
+    { name:"Pumpkin Seed Oil",      time:"evening",   emoji:"🎃", reason:"Bladder support, best with dinner" },
+    { name:"Collagen Complex",      time:"evening",   emoji:"💪", reason:"Connective tissue repair peaks overnight", incoming:true },
+  ],
+  meagan: [
+    { name:"Magnesium Glycinate",   time:"evening",   emoji:"🌙", reason:"Sleep & muscle relaxation" },
+    { name:"Magnesium L-Threonate", time:"evening",   emoji:"🧠", reason:"Memory consolidation during sleep" },
+    { name:"ADK",                   time:"morning",   emoji:"☀️", reason:"Fat-soluble vitamins with morning meal" },
+    { name:"Stress Care",           time:"morning",   emoji:"🌿", reason:"Adaptogens regulate morning cortisol" },
+    { name:"B-Complex Plus",        time:"morning",   emoji:"⚡", reason:"Energy & stress response, with food" },
+    { name:"Omega-3 / Fish Oil",    time:"evening",   emoji:"🐟", reason:"Best absorbed with dinner" },
+    { name:"Cortisolv",             time:"morning",   emoji:"🧘", reason:"Cortisol peaks at 8-9am, regulate early" },
+  ]
+};
+
+const SUPPLEMENT_INFO = [
+  { name:"Magnesium Glycinate",   emoji:"🌙", who:"Both",        time:"Evening — before bed",          dosage:"200-400mg elemental magnesium",          brand:"Pure Encapsulations",            purpose:"Sleep quality, muscle relaxation, stress reduction",     notes:"Most bioavailable form. Gentle on digestion." },
+  { name:"Magnesium L-Threonate", emoji:"🧠", who:"Both",        time:"Evening — before bed",          dosage:"144mg elemental magnesium (2g Magtein®)",brand:"Life Extension Neuro-Mag",       purpose:"Cognitive function, memory consolidation",               notes:"Only form shown to cross the blood-brain barrier." },
+  { name:"ADK",                   emoji:"☀️", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"DaVinci Laboratories",           purpose:"Immune, bone health, calcium regulation",                notes:"Vitamin K2 (MK-7) directs calcium to bones. Essential with D3." },
+  { name:"Stress Care",           emoji:"🌿", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"Himalaya",                       purpose:"HPA axis support, cortisol regulation",                  notes:"Contains ashwagandha, holy basil. Check overlap with Cortisolv." },
+  { name:"B-Complex Plus",        emoji:"⚡", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"Pure Encapsulations",            purpose:"Energy production, nervous system support",              notes:"Avoid evening — may disrupt sleep." },
+  { name:"Omega-3 / Fish Oil",    emoji:"🐟", who:"Both",        time:"Evening — with dinner",         dosage:"1-2g EPA+DHA combined",                  brand:"As purchased",                   purpose:"Heart health, inflammation, brain, joints",              notes:"Take with largest meal. Triglyceride form preferred." },
+  { name:"Bone-Up",               emoji:"🦴", who:"Sky only",    time:"Afternoon — with food",         dosage:"As directed on label",                   brand:"Jarrow Formulas",                purpose:"Bone density, skeletal support, DDD management",         notes:"Uses MCHA — superior absorption vs calcium carbonate." },
+  { name:"Boron",                 emoji:"⚗️", who:"Sky only",    time:"Afternoon — with Bone-Up",      dosage:"3-6mg daily",                            brand:"TBD",                            purpose:"Bone metabolism, enhances calcium & magnesium absorption",notes:"📦 On the way. Pairs with Bone-Up and ADK." },
+  { name:"Pumpkin Seed Oil",      emoji:"🎃", who:"Sky only",    time:"Evening — with dinner",         dosage:"3,000mg",                                brand:"Micro Ingredients",              purpose:"Bladder support, urinary frequency related to DDD",      notes:"Cold-pressed. Mag Glycinate also supports bladder." },
+  { name:"Collagen Complex",      emoji:"💪", who:"Sky only",    time:"Evening — before bed",          dosage:"As directed on label",                   brand:"Professional Health Products",   purpose:"Joint & disc support, cartilage integrity for DDD",      notes:"📦 On the way. BioCell Collagen®, HA, OptiMSM®, Glucosamine." },
+  { name:"Cortisolv",             emoji:"🧘", who:"Meagan only", time:"Morning — upon waking",         dosage:"As directed on label",                   brand:"Xymogen",                        purpose:"Cortisol regulation, stress response, adrenal support",  notes:"Check for ashwagandha overlap with Stress Care." },
+];
+
+// ── State ─────────────────────────────────────────────────────
+let history       = {};   // { "2026-03-12": { sky: { "Magnesium": true }, meagan: {...} } }
+let activePerson  = "sky";
+let activeTime    = "all";
+let currentView   = "today";
+let dashRange     = 30;
+let historyLoaded = false;
+
+// ── Helpers ───────────────────────────────────────────────────
+function todayKey() { return new Date().toLocaleDateString("en-CA"); }
+
+function dateRange(days) {
+  return Array.from({length: days}, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - (days - 1 - i));
+    return d.toLocaleDateString("en-CA");
+  });
+}
+
+function cutoffDate(days) {
+  const d = new Date(); d.setDate(d.getDate() - days);
+  return d.toLocaleDateString("en-CA");
+}
+
+function isChecked(name, person, date) {
+  return !!history[date || todayKey()]?.[person]?.[name];
+}
+
+function getStreak(name, person) {
+  const days = Object.keys(history).sort().reverse();
+  let streak = 0;
+  for (const d of days) {
+    if (history[d]?.[person]?.[name]) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function getAdherence(name, person, days) {
+  const range = dateRange(days);
+  const taken = range.filter(d => history[d]?.[person]?.[name]).length;
+  return Math.round((taken / range.length) * 100);
+}
+
+function getDayPct(day, person) {
+  const supps = SUPPLEMENTS[person];
+  if (!supps.length) return 0;
+  const done = supps.filter(s => history[day]?.[person]?.[s.name]).length;
+  return Math.round((done / supps.length) * 100);
+}
+
+function adherenceColor(rate) {
+  return rate >= 80 ? "var(--success)" : rate >= 50 ? "var(--warn)" : "var(--danger)";
+}
+
+function personColor(person) {
+  return person === "sky" ? "var(--sky)" : "var(--meagan)";
+}
+
+// ── Firebase ──────────────────────────────────────────────────
+async function loadToday() {
+  // Load just today's doc first — fast single read
+  const status = document.getElementById("saveStatus");
+  status.textContent = "⏳";
+  try {
+    const snap = await getDoc(doc(db, "history", todayKey()));
+    if (snap.exists()) history[todayKey()] = snap.data();
+    status.textContent = "✓";
+  } catch(e) {
+    status.textContent = "⚠️";
+  }
+  // Show app immediately
+  document.getElementById("skeleton").style.display = "none";
+  document.getElementById("app").style.display = "";
+  renderAll();
+  // Then load history in background
+  loadHistoryBackground();
+}
+
+async function loadHistoryBackground() {
+  if (historyLoaded) return;
+  const status = document.getElementById("saveStatus");
+  try {
+    // Proper server-side filter — only fetch last 90 days
+    const cutoff = cutoffDate(90);
+    const snap = await getDocs(collection(db, "history"));
+    snap.forEach(d => {
+      if (d.id >= cutoff && d.id !== todayKey()) {
+        history[d.id] = d.data();
+      }
+    });
+    historyLoaded = true;
+    status.textContent = "✓ Synced";
+    // Re-render if on a data-dependent tab
+    if (currentView !== "today") renderAll();
+  } catch(e) {
+    status.textContent = "⚠️ Offline";
+  }
+}
+
+async function saveDay(dateKey) {
+  const status = document.getElementById("saveStatus");
+  status.textContent = "💾";
+  try {
+    await setDoc(doc(db, "history", dateKey), history[dateKey] || {});
+    status.textContent = "✓ Saved";
+  } catch(e) {
+    status.textContent = "⚠️ Failed";
+  }
+}
+
+// ── Toggle ────────────────────────────────────────────────────
+function toggle(name, person) {
+  const d = todayKey();
+  if (!history[d])         history[d] = {};
+  if (!history[d][person]) history[d][person] = {};
+  history[d][person][name] = !history[d][person][name];
+  saveDay(d);
+  renderAll();
+}
+
+// ── Render: Person row ────────────────────────────────────────
+function renderPersonRow() {
+  document.getElementById("personRow").innerHTML =
+    ["sky","meagan"].map(p => {
+      const active = activePerson === p;
+      return `<button class="person-btn ${active ? "active-"+p : ""}" onclick="setPerson('${p}')">
+        ${p === "sky" ? "💙 Sky" : "💛 Meagan"}
+      </button>`;
+    }).join("");
+}
+
+// ── Render: Today ─────────────────────────────────────────────
+function renderToday() {
+  const list = SUPPLEMENTS[activePerson].filter(s => activeTime === "all" || s.time === activeTime);
+  const done = list.filter(s => isChecked(s.name, activePerson)).length;
+  const pct  = list.length ? Math.round((done / list.length) * 100) : 0;
+  const col  = personColor(activePerson);
+
+  const timePills = ["all","morning","afternoon","evening"].map(t => `
+    <button class="time-pill${activeTime===t?" active":""}" onclick="setTime('${t}')">
+      ${t==="all" ? "All" : {morning:"🌅 AM", afternoon:"🌤️ PM", evening:"🌙 Eve"}[t]}
+    </button>`).join("");
+
+  const cards = list.map(s => {
+    const checked = isChecked(s.name, activePerson);
+    const streak  = getStreak(s.name, activePerson);
+    return `
+    <div class="supp-card ${activePerson}-card${checked?" done":""}"
+      style="border-color:${checked?"var(--border)":col+"44"}"
+      onclick="toggle('${s.name.replace(/'/g,"\\'")}','${activePerson}')">
+      <div class="check-box${checked?" checked":" "}" style="border-color:${checked?"var(--success)":col}">
+        ${checked?"✓":""}
+      </div>
+      <div class="supp-body">
+        <div class="supp-top">
+          <span class="supp-name">${s.emoji} ${s.name}</span>
+          <span class="badge badge-${s.time}">${s.time}</span>
+          ${s.incoming ? `<span class="badge badge-soon">📦 Soon</span>` : ""}
+          ${streak > 1 ? `<span class="badge badge-streak">🔥 ${streak}d</span>` : ""}
+        </div>
+        <p class="supp-reason">${s.reason}</p>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("tab_today").innerHTML = `
+    <div class="prog-box">
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span style="font-weight:600">Today's Progress</span>
+        <span style="color:var(--muted)">${done}/${list.length} taken</span>
+      </div>
+      <div class="prog-bar-bg">
+        <div class="prog-bar-fill" style="width:${pct}%;background:${col}"></div>
+      </div>
+      <div style="text-align:right;font-size:12px;font-weight:700;color:${col}">${pct}%${pct===100?" 🎉":""}</div>
+    </div>
+    <div class="time-row">${timePills}</div>
+    <div class="supp-list">${cards}</div>`;
+}
+
+// ── Render: History ───────────────────────────────────────────
+function renderHistory() {
+  const col   = personColor(activePerson);
+  const last7 = dateRange(7);
+  const supps = SUPPLEMENTS[activePerson];
+
+  const bars = last7.map(day => {
+    const pct     = getDayPct(day, activePerson);
+    const isToday = day === todayKey();
+    const label   = new Date(day+"T12:00:00").toLocaleDateString("en-US",{weekday:"short"}).slice(0,2);
+    const fillColor = pct === 100 ? "var(--success)" : col;
+    return `
+    <div class="day-bar-wrap">
+      <div class="day-bar-track" style="border:1px solid ${isToday?col:"var(--border)"}">
+        <div class="day-bar-fill" style="height:${pct}%;background:${fillColor}"></div>
+      </div>
+      <span class="day-bar-label" style="color:${isToday?"var(--text)":"var(--muted)"}; font-weight:${isToday?700:400}">${label}</span>
+      <span class="day-bar-pct">${pct > 0 ? pct+"%" : ""}</span>
+    </div>`;
+  }).join("");
+
+  const adherence = supps.map(s => {
+    const rate  = getAdherence(s.name, activePerson, 7);
+    const streak = getStreak(s.name, activePerson);
+    const color = adherenceColor(rate);
+    return `
+    <div class="adh-row">
+      <span class="adh-icon">${s.emoji}</span>
+      <div class="adh-info">
+        <div class="adh-name">
+          <span>${s.name}</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${streak > 0 ? `<span style="font-size:10px;color:var(--warn)">🔥 ${streak}d</span>` : ""}
+            <span style="color:${color};font-weight:700">${rate}%</span>
+          </div>
+        </div>
+        <div class="adh-bar-bg"><div class="adh-bar-fill" style="width:${rate}%;background:${color}"></div></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const noData = !Object.keys(history).length;
+
+  document.getElementById("tab_history").innerHTML = `
+    <div class="section-title">LAST 7 DAYS</div>
+    <div class="box" style="margin-bottom:16px">
+      <div class="day-bars">${bars}</div>
+    </div>
+    <div class="section-title">7-DAY ADHERENCE</div>
+    ${noData
+      ? `<div class="box" style="text-align:center;padding:32px;color:var(--muted)">
+           <div style="font-size:32px;margin-bottom:10px">📊</div>
+           <p>Start checking off today to build your history!</p>
+         </div>`
+      : `<div class="box">${adherence}</div>`}`;
+}
+
+// ── Render: Dashboard ─────────────────────────────────────────
+function renderDashboard() {
+  const col   = personColor(activePerson);
+  const range = dateRange(dashRange);
+  const rates = range.map(d => getDayPct(d, activePerson));
+  const avg   = Math.round(rates.reduce((a,b)=>a+b,0) / rates.length);
+  const best  = Math.max(...rates);
+  let streak  = 0;
+  for (let i = rates.length-1; i >= 0; i--) {
+    if (rates[i] >= 80) streak++; else break;
+  }
+
+  const rangePills = [30,60,90].map(r => `
+    <button class="range-pill${dashRange===r?" active":""}" onclick="setDashRange(${r})">${r} Days</button>`
+  ).join("");
+
+  const timeline = range.map((_, i) => {
+    const pct = rates[i] / 100;
+    const bg  = pct >= 0.8 ? "var(--success)" : pct >= 0.5 ? col : pct > 0 ? "var(--danger)" : "var(--surface2)";
+    return `<div style="flex:1;height:40px;background:var(--surface2);border-radius:3px;position:relative;overflow:hidden">
+      <div style="position:absolute;bottom:0;width:100%;height:${pct*100}%;background:${bg};border-radius:2px 2px 0 0"></div>
+    </div>`;
+  }).join("");
+
+  const calDays = dateRange(30).map(day => {
+    const pct     = getDayPct(day, activePerson);
+    const isToday = day === todayKey();
+    const bg      = pct >= 80 ? "var(--success)" : pct >= 50 ? col : pct > 0 ? "var(--danger)" : "var(--surface2)";
+    const num     = new Date(day+"T12:00:00").getDate();
+    return `<div class="cal-day" title="${day}: ${pct}%"
+      style="background:${bg};color:${pct>0?"var(--text)":"var(--muted)"};border:${isToday?"2px solid var(--text)":"none"}">${num}</div>`;
+  }).join("");
+
+  const adherence = SUPPLEMENTS[activePerson].map(s => {
+    const rate   = getAdherence(s.name, activePerson, dashRange);
+    const streak = getStreak(s.name, activePerson);
+    const color  = adherenceColor(rate);
+    return `
+    <div class="adh-row">
+      <span class="adh-icon">${s.emoji}</span>
+      <div class="adh-info">
+        <div class="adh-name">
+          <span>${s.name}</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            ${streak > 1 ? `<span style="font-size:10px;color:var(--warn)">🔥 ${streak}d</span>` : ""}
+            <span style="color:${color};font-weight:700">${rate}%</span>
+          </div>
+        </div>
+        <div class="adh-bar-bg"><div class="adh-bar-fill" style="width:${rate}%;background:${color}"></div></div>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("tab_dashboard").innerHTML = `
+    <div class="range-row">${rangePills}</div>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-val" style="color:${col}">${avg}%</div>
+        <div class="stat-label">Avg Daily</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--warn)">🔥${streak}</div>
+        <div class="stat-label">Day Streak</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--success)">${best}%</div>
+        <div class="stat-label">Best Day</div>
+      </div>
+    </div>
+    <div class="section-title">${dashRange}-DAY TIMELINE</div>
+    <div class="box" style="margin-bottom:16px">
+      <div style="display:flex;align-items:flex-end;gap:2px;height:50px">${timeline}</div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:var(--muted)">
+        <span>${new Date(range[0]+"T12:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+        <span>Today</span>
+      </div>
+    </div>
+    <div class="section-title">LAST 30 DAYS</div>
+    <div class="box" style="margin-bottom:16px">
+      <div class="cal-grid">${calDays}</div>
+      <div style="display:flex;gap:12px;margin-top:10px;font-size:10px;color:var(--muted)">
+        <span><span style="color:var(--success)">■</span> 80%+</span>
+        <span><span style="color:${col}">■</span> 50–79%</span>
+        <span><span style="color:var(--danger)">■</span> &lt;50%</span>
+      </div>
+    </div>
+    <div class="section-title">ADHERENCE (${dashRange} DAYS)</div>
+    <div class="box">${adherence}</div>`;
+}
+
+// ── Render: Info ──────────────────────────────────────────────
+function renderInfo() {
+  const cards = SUPPLEMENT_INFO.map(s => {
+    const whoColor = s.who === "Both" ? "#7c3aed" : s.who === "Sky only" ? "var(--sky)" : "var(--meagan)";
+    return `
+    <div class="info-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">${s.emoji}</span>
+          <span style="font-size:15px;font-weight:700">${s.name}</span>
+        </div>
+        <span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;
+          background:${whoColor}22;color:${whoColor};border:1px solid ${whoColor}44">${s.who}</span>
+      </div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-cell-label">Dosage</div><div class="info-cell-val">${s.dosage}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Timing</div><div class="info-cell-val">${s.time}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Brand</div><div class="info-cell-val">${s.brand}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Purpose</div><div class="info-cell-val">${s.purpose}</div></div>
+      </div>
+      <div class="info-cell"><div class="info-cell-label">📝 Notes</div><div class="info-cell-val" style="color:var(--muted)">${s.notes}</div></div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("tab_info").innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Full reference guide for all supplements.</p>
+    ${cards}`;
+}
+
+// ── Render all ────────────────────────────────────────────────
+function renderAll() {
+  renderPersonRow();
+  if (currentView === "today")     renderToday();
+  if (currentView === "history")   renderHistory();
+  if (currentView === "dashboard") renderDashboard();
+  if (currentView === "info")      renderInfo();
+}
+
+// ── View / state setters ──────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  ["today","history","dashboard","info"].forEach(x => {
+    document.getElementById("btn_"+x).className   = "tab-btn" + (v===x?" active":"");
+    document.getElementById("tab_"+x).className   = "tab-panel" + (v===x?" active":"");
+  });
+  // Trigger background history load if switching away from today
+  if (v !== "today" && !historyLoaded) loadHistoryBackground();
+  renderAll();
+}
+
+function setPerson(p)  { activePerson = p; renderAll(); }
+function setTime(t)    { activeTime   = t; renderToday(); }
+function setDashRange(r) { dashRange  = r; renderDashboard(); }
+
+// ── Expose globals ────────────────────────────────────────────
+window.toggle       = toggle;
+window.setView      = setView;
+window.setPerson    = setPerson;
+window.setTime      = setTime;
+window.setDashRange = setDashRange;
+
+// ── Boot ──────────────────────────────────────────────────────
+document.getElementById("dateLabel").textContent =
+  new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+
+loadToday();
+</script>
 </body>
 </html>
