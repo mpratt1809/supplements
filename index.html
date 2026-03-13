@@ -359,21 +359,31 @@ function personColor(p) { return p === "sky" ? "var(--sky)" : "var(--meagan)"; }
 async function loadData() {
   const status = document.getElementById("saveStatus");
   status.textContent = "⏳";
-  try {
-    // One efficient query: all supplement docs from last 90 days
-    // Structure: supplements/{person}-{date} → { user, date, taken: {name: bool} }
-    const snap = await getDocs(
-      query(collection(db, "supplements"), where("date", ">=", cutoffKey(90)))
-    );
-    allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    status.textContent = "✓ Synced";
-  } catch(e) {
-    status.textContent = "⚠️ Offline";
-    console.warn(e);
-  }
+  // Always show app immediately — don't block on Firebase
   document.getElementById("skeleton").style.display = "none";
   document.getElementById("appShell").style.display = "";
   renderAll();
+  // Then fetch in background
+  try {
+    const cutoff = cutoffKey(90);
+    const snap = await getDocs(
+      query(collection(db, "supplements"), where("date", ">=", cutoff))
+    );
+    allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    status.textContent = "✓ Synced";
+    renderAll(); // re-render with real data
+  } catch(e) {
+    // If where() query fails (e.g. missing index), try full collection scan
+    try {
+      const snap = await getDocs(collection(db, "supplements"));
+      allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      status.textContent = "✓ Synced";
+      renderAll();
+    } catch(e2) {
+      status.textContent = "⚠️ Offline";
+      console.warn("loadData error:", e, e2);
+    }
+  }
 }
 
 async function saveDoc(person, date) {
