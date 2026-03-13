@@ -291,12 +291,12 @@ const SUPPLEMENT_INFO = [
 ];
 
 // ── State ─────────────────────────────────────────────────────
-let history       = {};   // { "2026-03-12": { sky: { "Magnesium": true }, meagan: {...} } }
-let activePerson  = "sky";
-let activeTime    = "all";
-let currentView   = "today";
-let dashRange     = 30;
-let 
+let allDocs      = [];
+let activePerson = "sky";
+let activeTime   = "all";
+let currentView  = "today";
+let dashRange    = 30;
+
 
 // ── Date helpers ───────────────────────────────────────────────
 function todayKey() { return new Date().toLocaleDateString("en-CA"); }
