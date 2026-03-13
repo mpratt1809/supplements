@@ -296,47 +296,56 @@ let activePerson  = "sky";
 let activeTime    = "all";
 let currentView   = "today";
 let dashRange     = 30;
-let historyLoaded = false;
+let 
 
-// ── Helpers ───────────────────────────────────────────────────
+// ── Date helpers ───────────────────────────────────────────────
 function todayKey() { return new Date().toLocaleDateString("en-CA"); }
 
 function dateRange(days) {
   return Array.from({length: days}, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (days - 1 - i));
+    const d = new Date();
+    d.setDate(d.getDate() - (days - 1 - i));
     return d.toLocaleDateString("en-CA");
   });
 }
 
-function cutoffDate(days) {
-  const d = new Date(); d.setDate(d.getDate() - days);
+function cutoffKey(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
   return d.toLocaleDateString("en-CA");
 }
 
+// ── Data helpers ────────────────────────────────────────────────
+function getDocFor(person, date) {
+  return allDocs.find(d => d.user === person && d.date === date) || null;
+}
+
 function isChecked(name, person, date) {
-  return !!history[date || todayKey()]?.[person]?.[name];
+  return !!getDocFor(person, date || todayKey())?.taken?.[name];
 }
 
 function getStreak(name, person) {
-  const days = Object.keys(history).sort().reverse();
   let streak = 0;
-  for (const d of days) {
-    if (history[d]?.[person]?.[name]) streak++;
+  const d = new Date();
+  while (true) {
+    const key = d.toLocaleDateString("en-CA");
+    if (isChecked(name, person, key)) streak++;
     else break;
+    d.setDate(d.getDate() - 1);
   }
   return streak;
 }
 
 function getAdherence(name, person, days) {
   const range = dateRange(days);
-  const taken = range.filter(d => history[d]?.[person]?.[name]).length;
+  const taken = range.filter(d => isChecked(name, person, d)).length;
   return Math.round((taken / range.length) * 100);
 }
 
-function getDayPct(day, person) {
+function getDayPct(date, person) {
   const supps = SUPPLEMENTS[person];
   if (!supps.length) return 0;
-  const done = supps.filter(s => history[day]?.[person]?.[s.name]).length;
+  const done = supps.filter(s => isChecked(s.name, person, date)).length;
   return Math.round((done / supps.length) * 100);
 }
 
@@ -344,56 +353,38 @@ function adherenceColor(rate) {
   return rate >= 80 ? "var(--success)" : rate >= 50 ? "var(--warn)" : "var(--danger)";
 }
 
-function personColor(person) {
-  return person === "sky" ? "var(--sky)" : "var(--meagan)";
-}
+function personColor(p) { return p === "sky" ? "var(--sky)" : "var(--meagan)"; }
 
-// ── Firebase ──────────────────────────────────────────────────
-async function loadToday() {
-  // Load just today's doc first — fast single read
+// ── Firestore ───────────────────────────────────────────────────
+async function loadData() {
   const status = document.getElementById("saveStatus");
   status.textContent = "⏳";
   try {
-    const snap = await getDoc(doc(db, "history", todayKey()));
-    if (snap.exists()) history[todayKey()] = snap.data();
-    status.textContent = "✓";
-  } catch(e) {
-    status.textContent = "⚠️";
-  }
-  // Show app immediately
-  document.getElementById("skeleton").style.display = "none";
-  document.getElementById("app").style.display = "";
-  renderAll();
-  // Then load history in background
-  loadHistoryBackground();
-}
-
-async function loadHistoryBackground() {
-  if (historyLoaded) return;
-  const status = document.getElementById("saveStatus");
-  try {
-    // Proper server-side filter — only fetch last 90 days
-    const cutoff = cutoffDate(90);
-    const snap = await getDocs(collection(db, "history"));
-    snap.forEach(d => {
-      if (d.id >= cutoff && d.id !== todayKey()) {
-        history[d.id] = d.data();
-      }
-    });
-    historyLoaded = true;
+    // One efficient query: all supplement docs from last 90 days
+    // Structure: supplements/{person}-{date} → { user, date, taken: {name: bool} }
+    const snap = await getDocs(
+      query(collection(db, "supplements"), where("date", ">=", cutoffKey(90)))
+    );
+    allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     status.textContent = "✓ Synced";
-    // Re-render if on a data-dependent tab
-    if (currentView !== "today") renderAll();
   } catch(e) {
     status.textContent = "⚠️ Offline";
+    console.warn(e);
   }
+  document.getElementById("skeleton").style.display = "none";
+  document.getElementById("appShell").style.display = "";
+  renderAll();
 }
 
-async function saveDay(dateKey) {
+async function saveDoc(person, date) {
   const status = document.getElementById("saveStatus");
   status.textContent = "💾";
+  const rec   = getDocFor(person, date);
+  const docId = rec?.id || `${person}-${date}`;
+  const taken = rec?.taken || {};
   try {
-    await setDoc(doc(db, "history", dateKey), history[dateKey] || {});
+    await setDoc(doc(db, "supplements", docId), { user: person, date, taken });
+    if (rec) rec.taken = taken;
     status.textContent = "✓ Saved";
   } catch(e) {
     status.textContent = "⚠️ Failed";
@@ -402,11 +393,14 @@ async function saveDay(dateKey) {
 
 // ── Toggle ────────────────────────────────────────────────────
 function toggle(name, person) {
-  const d = todayKey();
-  if (!history[d])         history[d] = {};
-  if (!history[d][person]) history[d][person] = {};
-  history[d][person][name] = !history[d][person][name];
-  saveDay(d);
+  const date = todayKey();
+  let rec = getDocFor(person, date);
+  if (!rec) {
+    rec = { id: `${person}-${date}`, user: person, date, taken: {} };
+    allDocs.push(rec);
+  }
+  rec.taken[name] = !rec.taken[name];
+  saveDoc(person, date);
   renderAll();
 }
 
@@ -511,7 +505,6 @@ function renderHistory() {
     </div>`;
   }).join("");
 
-  const noData = !Object.keys(history).length;
 
   document.getElementById("tab_history").innerHTML = `
     <div class="section-title">LAST 7 DAYS</div>
@@ -519,7 +512,7 @@ function renderHistory() {
       <div class="day-bars">${bars}</div>
     </div>
     <div class="section-title">7-DAY ADHERENCE</div>
-    ${noData
+    ${allDocs.filter(d=>d.user===activePerson).length===0
       ? `<div class="box" style="text-align:center;padding:32px;color:var(--muted)">
            <div style="font-size:32px;margin-bottom:10px">📊</div>
            <p>Start checking off today to build your history!</p>
@@ -663,7 +656,6 @@ function setView(v) {
     document.getElementById("tab_"+x).className   = "tab-panel" + (v===x?" active":"");
   });
   // Trigger background history load if switching away from today
-  if (v !== "today" && !historyLoaded) loadHistoryBackground();
   renderAll();
 }
 
@@ -682,7 +674,7 @@ window.setDashRange = setDashRange;
 document.getElementById("dateLabel").textContent =
   new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
-loadToday();
+loadData();
 </script>
 </body>
 </html>
