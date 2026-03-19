@@ -397,14 +397,21 @@ async function loadData() {
     );
     allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     status.textContent = "✓ Synced";
-    renderAll(); // re-render with real data
+    // Re-render all views so switching tabs shows data immediately
+    renderToday();
+    renderHistory();
+    renderDashboard();
+    if (currentView !== "today") renderAll();
   } catch(e) {
     // If where() query fails (e.g. missing index), try full collection scan
     try {
       const snap = await getDocs(collection(db, "supplements"));
       allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       status.textContent = "✓ Synced";
-      renderAll();
+      renderToday();
+      renderHistory();
+      renderDashboard();
+      if (currentView !== "today") renderAll();
     } catch(e2) {
       status.textContent = "⚠️ Offline";
       console.warn("loadData error:", e, e2);
