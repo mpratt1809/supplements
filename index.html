@@ -348,6 +348,11 @@ function isChecked(name, person, date) {
 function getStreak(name, person) {
   let streak = 0;
   const d = new Date();
+  const today = todayKey();
+  // If today isn't checked yet, start counting from yesterday
+  if (!isChecked(name, person, today)) {
+    d.setDate(d.getDate() - 1);
+  }
   while (true) {
     const key = d.toLocaleDateString("en-CA");
     if (isChecked(name, person, key)) streak++;
@@ -559,9 +564,19 @@ function renderDashboard() {
   const rates = range.map(d => getDayPct(d, activePerson));
   const avg   = Math.round(rates.reduce((a,b)=>a+b,0) / rates.length);
   const best  = Math.max(...rates);
-  let streak  = 0;
-  for (let i = rates.length-1; i >= 0; i--) {
-    if (rates[i] >= 80) streak++; else break;
+  // Day streak: consecutive days at 80%+ completion, forgiving today if not yet done
+  let streak = 0;
+  const today = todayKey();
+  const d = new Date();
+  // If today isn't 80%+ yet, skip it and start from yesterday
+  const todayPct = getDayPct(today, activePerson);
+  if (todayPct < 80) d.setDate(d.getDate() - 1);
+  while (true) {
+    const key = d.toLocaleDateString("en-CA");
+    const pct = getDayPct(key, activePerson);
+    if (pct >= 80) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+    if (streak > 365) break; // safety cap
   }
 
   const rangePills = [30,60,90].map(r => `
