@@ -147,8 +147,28 @@ header {
 .cal-day {
   width: calc(100%/7 - 3px); aspect-ratio: 1;
   border-radius: 5px; display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 600;
+  font-size: 9px; font-weight: 600; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
 }
+.cal-day:hover { transform: scale(1.15); box-shadow: 0 0 0 2px var(--accent2); }
+.cal-day.editing { box-shadow: 0 0 0 2px var(--text) !important; transform: scale(1.1); }
+
+/* ── Edit Day Panel ── */
+.edit-day-panel {
+  background: var(--surface); border: 1.5px solid var(--accent2);
+  border-radius: var(--radius); padding: 16px; margin-top: 12px;
+  animation: fadeSlide 0.2s ease;
+}
+@keyframes fadeSlide { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.edit-day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.edit-day-title { font-size: 14px; font-weight: 700; color: var(--accent2); }
+.edit-day-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.edit-day-close:hover { background: var(--surface2); color: var(--text); }
+.edit-supp-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+.edit-supp-row:last-child { border-bottom: none; }
+.edit-check { width: 22px; height: 22px; min-width: 22px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--success); transition: all 0.15s; }
+.edit-check.checked { background: rgba(46,213,115,0.15); border-color: var(--success); }
+.edit-supp-name { font-size: 13px; font-weight: 600; flex: 1; }
+.edit-supp-name.struck { text-decoration: line-through; color: var(--muted); }
 
 /* ── Info cards ── */
 .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
@@ -296,6 +316,7 @@ let activePerson = "sky";
 let activeTime   = "all";
 let currentView  = "today";
 let dashRange    = 30;
+let editingDate  = null; // non-null when editing a past day from dashboard
 
 
 // ── Date helpers ───────────────────────────────────────────────
@@ -401,9 +422,9 @@ async function saveDoc(person, date) {
   }
 }
 
-// ── Toggle ────────────────────────────────────────────────────
-function toggle(name, person) {
-  const date = todayKey();
+// ── Toggle (works for any date) ───────────────────────────────
+function toggle(name, person, date) {
+  date = date || todayKey();
   let rec = getDocFor(person, date);
   if (!rec) {
     rec = { id: `${person}-${date}`, user: person, date, taken: {} };
@@ -411,7 +432,8 @@ function toggle(name, person) {
   }
   rec.taken[name] = !rec.taken[name];
   saveDoc(person, date);
-  renderAll();
+  if (date === todayKey()) renderAll();
+  else renderEditDay(); // only re-render the edit panel
 }
 
 // ── Render: Person row ────────────────────────────────────────
@@ -555,11 +577,13 @@ function renderDashboard() {
   }).join("");
 
   const calDays = dateRange(30).map(day => {
-    const pct     = getDayPct(day, activePerson);
-    const isToday = day === todayKey();
-    const bg      = pct >= 80 ? "var(--success)" : pct >= 50 ? col : pct > 0 ? "var(--danger)" : "var(--surface2)";
-    const num     = new Date(day+"T12:00:00").getDate();
-    return `<div class="cal-day" title="${day}: ${pct}%"
+    const pct       = getDayPct(day, activePerson);
+    const isToday   = day === todayKey();
+    const isEditing = day === editingDate;
+    const bg        = pct >= 80 ? "var(--success)" : pct >= 50 ? col : pct > 0 ? "var(--danger)" : "var(--surface2)";
+    const num       = new Date(day+"T12:00:00").getDate();
+    return `<div class="cal-day${isEditing?" editing":""}" title="${day}: ${pct}%"
+      onclick="openEditDay('${day}')"
       style="background:${bg};color:${pct>0?"var(--text)":"var(--muted)"};border:${isToday?"2px solid var(--text)":"none"}">${num}</div>`;
   }).join("");
 
@@ -614,10 +638,70 @@ function renderDashboard() {
         <span><span style="color:var(--success)">■</span> 80%+</span>
         <span><span style="color:${col}">■</span> 50–79%</span>
         <span><span style="color:var(--danger)">■</span> &lt;50%</span>
+        <span style="margin-left:auto;color:var(--accent2)">Tap a day to edit</span>
       </div>
     </div>
+    <div id="edit-day-container"></div>
     <div class="section-title">ADHERENCE (${dashRange} DAYS)</div>
     <div class="box">${adherence}</div>`;
+  if (editingDate) setTimeout(renderEditDay, 0);
+}
+
+// ── Edit Day (from dashboard calendar) ───────────────────────
+function openEditDay(date) {
+  if (editingDate === date) {
+    editingDate = null;
+    renderDashboard();
+    return;
+  }
+  editingDate = date;
+  renderDashboard(); // re-render to highlight selected day
+  setTimeout(() => {
+    const el = document.getElementById("edit-day-container");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, 100);
+}
+
+function closeEditDay() {
+  editingDate = null;
+  renderDashboard();
+}
+
+function renderEditDay() {
+  const container = document.getElementById("edit-day-container");
+  if (!container || !editingDate) return;
+  const date    = editingDate;
+  const d       = new Date(date + "T12:00:00");
+  const label   = d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+  const supps   = SUPPLEMENTS[activePerson];
+  const done    = supps.filter(s => isChecked(s.name, activePerson, date)).length;
+  const pct     = supps.length ? Math.round((done/supps.length)*100) : 0;
+  const col     = personColor(activePerson);
+
+  const rows = supps.map(s => {
+    const checked = isChecked(s.name, activePerson, date);
+    return `
+    <div class="edit-supp-row" onclick="toggle('${s.name.replace(/'/g,"\\'")}','${activePerson}','${date}')">
+      <div class="edit-check${checked?" checked":""}">${checked?"✓":""}</div>
+      <span class="edit-supp-name${checked?" struck":""}"><span style="margin-right:6px">${s.emoji}</span>${s.name}</span>
+      <span style="font-size:10px;color:var(--muted)">${s.time}</span>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="edit-day-panel">
+      <div class="edit-day-header">
+        <div>
+          <div class="edit-day-title">✏️ Editing: ${label}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${done}/${supps.length} taken · ${pct}%</div>
+        </div>
+        <button class="edit-day-close" onclick="closeEditDay()">✕</button>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:99px;margin-bottom:14px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${col};border-radius:99px;transition:width 0.3s"></div>
+      </div>
+      ${rows}
+    </div>`;
 }
 
 // ── Render: Info ──────────────────────────────────────────────
@@ -679,6 +763,8 @@ window.setView      = setView;
 window.setPerson    = setPerson;
 window.setTime      = setTime;
 window.setDashRange = setDashRange;
+window.openEditDay  = openEditDay;
+window.closeEditDay = closeEditDay;
 
 // ── Boot ──────────────────────────────────────────────────────
 document.getElementById("dateLabel").textContent =
