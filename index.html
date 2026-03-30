@@ -170,7 +170,37 @@ header {
 .edit-supp-name { font-size: 13px; font-weight: 600; flex: 1; }
 .edit-supp-name.struck { text-decoration: line-through; color: var(--muted); }
 
-/* ── Info cards ── */
+/* ── Supply Tracker ── */
+.supply-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 10px; }
+.supply-card.status-ok { border-left: 3px solid var(--success); }
+.supply-card.status-low { border-left: 3px solid var(--warn); }
+.supply-card.status-critical { border-left: 3px solid var(--danger); }
+.supply-card.status-swap { border-left: 3px solid #a78bfa; }
+.supply-card.status-pending { border-left: 3px solid var(--muted); }
+.supply-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
+.supply-name { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.supply-status-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+.badge-ok { background: rgba(46,213,115,0.15); color: var(--success); }
+.badge-low { background: rgba(255,165,2,0.15); color: var(--warn); }
+.badge-critical { background: rgba(255,71,87,0.15); color: var(--danger); }
+.badge-swap { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.badge-pending { background: rgba(107,117,146,0.15); color: var(--muted); }
+.supply-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.supply-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.supply-stat { background: var(--surface2); border-radius: 8px; padding: 8px 10px; }
+.supply-stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+.supply-stat-val { font-size: 13px; font-weight: 700; color: var(--text); }
+.supply-stat-val.ok { color: var(--success); }
+.supply-stat-val.low { color: var(--warn); }
+.supply-stat-val.critical { color: var(--danger); }
+.supply-bar-bg { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; margin: 6px 0 4px; }
+.supply-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+.supply-note { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.supply-who { font-size: 10px; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
+.supply-section-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
+.supply-summary-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.supply-summary-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+.reorder-tip { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
 .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; }
 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
 .info-cell { background: var(--surface2); border-radius: 8px; padding: 8px; }
@@ -224,6 +254,7 @@ header {
       <button class="tab-btn active" id="btn_today"     onclick="setView('today')">📋 Today</button>
       <button class="tab-btn"        id="btn_history"   onclick="setView('history')">📅 History</button>
       <button class="tab-btn"        id="btn_dashboard" onclick="setView('dashboard')">📊 Trends</button>
+      <button class="tab-btn"        id="btn_supply"    onclick="setView('supply')">🛒 Supply</button>
       <button class="tab-btn"        id="btn_info"      onclick="setView('info')">💡 Info</button>
     </div>
   </div>
@@ -250,6 +281,7 @@ header {
     <div class="tab-panel active" id="tab_today"></div>
     <div class="tab-panel"        id="tab_history"></div>
     <div class="tab-panel"        id="tab_dashboard"></div>
+    <div class="tab-panel"        id="tab_supply"></div>
     <div class="tab-panel"        id="tab_info"></div>
   </div>
 </div>
@@ -726,7 +758,427 @@ function renderEditDay() {
     </div>`;
 }
 
-// ── Render: Info ──────────────────────────────────────────────
+// ── Supply Tracker ─────────────────────────────────────────────
+// Default data — Firebase overrides these values per supplement
+const SUPPLY_DEFAULTS = [
+  // status: "ok" | "low" | "critical" | "swap" | "pending"
+  // swap = needs brand change when current runs out
+  // pending = not yet started / adding to stack
+  {
+    emoji:"🌙", name:"Magnesium Glycinate", who:"Both",
+    currentBrand:"Pure Encapsulations", nextBrand:"Thorne Magnesium Bisglycinate",
+    bottleCount:90, dailyDose:4, daysSupply:22,
+    buyQty:2, daysPerOrder:44,
+    status:"critical",
+    reorderDays:8,
+    where:"PeoplesRx",
+    note:"⚠️ Swap immediately — lead contamination found in Pure Encapsulations magnesium (Sept 2025). Do not wait for current bottle to run out. Thorne Magnesium Bisglycinate, NSF Certified for Sport.",
+    action:"Buy 2 bottles Thorne Magnesium Bisglycinate at PeoplesRx now"
+  },
+  {
+    emoji:"⚡", name:"B-Complex", who:"Both",
+    currentBrand:"Dr. Williams Methyl B (next up)", nextBrand:"Thorne Basic B",
+    bottleCount:60, dailyDose:2, daysSupply:30,
+    buyQty:2, daysPerOrder:44,
+    status:"swap",
+    reorderDays:16,
+    where:"PeoplesRx",
+    note:"Finish Pure Encaps now. Dr. Williams Methyl B is next (30 days). After that: Thorne Basic B — fully active B forms across all 8 vitamins. Pick up 2 bottles Thorne Basic B now so they're ready.",
+    action:"Pick up 2 bottles Thorne Basic B at PeoplesRx"
+  },
+  {
+    emoji:"🧠", name:"Magnesium L-Threonate (MagMind)", who:"Both",
+    currentBrand:"Jarrow MagMind", nextBrand:"Jarrow MagMind",
+    bottleCount:60, dailyDose:4, daysSupply:15,
+    buyQty:4, daysPerOrder:46,
+    status:"low",
+    reorderDays:1,
+    where:"PeoplesRx",
+    note:"Fastest-cycling supplement — 60-count lasts only 15 days at 4 caps/day. Ask PeoplesRx about 90-count bottle (22 days). Buy 4 bottles at a time. 2 caps each: 1 morning, 1 one hour before bed.",
+    action:"Buy 4 bottles Jarrow MagMind at PeoplesRx"
+  },
+  {
+    emoji:"☀️", name:"ADK (A + D3 + K2)", who:"Both",
+    currentBrand:"DaVinci Laboratories", nextBrand:"Thorne D/K2 Liquid + Thorne Vitamin A",
+    bottleCount:60, dailyDose:2, daysSupply:30,
+    buyQty:2, daysPerOrder:44,
+    status:"swap",
+    reorderDays:16,
+    where:"PeoplesRx",
+    note:"Finish current DaVinci. When it runs out switch to Thorne D/K2 Liquid (D3 + MK-4/MK-7 K2) + Thorne Vitamin A separately. Both NSF certified, both available at PeoplesRx.",
+    action:"Order Thorne D/K2 Liquid + Thorne Vitamin A when DaVinci runs out"
+  },
+  {
+    emoji:"🌿", name:"Stress Care / Ashwagandha", who:"Both",
+    currentBrand:"Himalaya Stress Care", nextBrand:"Thorne Ashwagandha",
+    bottleCount:120, dailyDose:4, daysSupply:30,
+    buyQty:2, daysPerOrder:44,
+    status:"swap",
+    reorderDays:16,
+    where:"PeoplesRx",
+    note:"Finish Himalaya. Switch to Thorne Ashwagandha (Shoden extract, standardized withanolides, NSF certified). Meagan: confirm with practitioner about Cortisolv overlap when switching — plan to eliminate Cortisolv at the same time.",
+    action:"Pick up 2 bottles Thorne Ashwagandha when Himalaya runs out"
+  },
+  {
+    emoji:"🐟", name:"Omega-3 / Fish Oil", who:"Both",
+    currentBrand:"Xymogen Omega MonoPure 1300 EC", nextBrand:"Xymogen Omega MonoPure 1300 EC",
+    bottleCount:60, dailyDose:2, daysSupply:30,
+    buyQty:2, daysPerOrder:44,
+    status:"ok",
+    reorderDays:16,
+    where:"PeoplesRx (Xymogen)",
+    note:"Top of category — IFOS 5-Star certified, MaxSimil monoglyceride form (3× absorption). Keep. Consider bumping to 2 softgels/day each (4/day total) for better EPA+DHA levels for active adults — that halves your days supply to 15 days.",
+    action:"Reorder 2 bottles Omega MonoPure every ~44 days at PeoplesRx"
+  },
+  {
+    emoji:"🦴", name:"Bone-Up", who:"Sky only",
+    currentBrand:"Jarrow BoneUp", nextBrand:"Jarrow BoneUp",
+    bottleCount:90, dailyDose:2, daysSupply:45,
+    buyQty:2, daysPerOrder:59,
+    status:"ok",
+    reorderDays:31,
+    where:"PeoplesRx",
+    note:"Best-in-class — StimuCal MCHA from NZ free-range calves, superior to calcium carbonate. 2 caps/day (Sky). Note: label suggests 6 caps for full 1,000mg dose — confirm 2-cap dose is practitioner-intended.",
+    action:"Buy 2 bottles Jarrow BoneUp every ~59 days at PeoplesRx"
+  },
+  {
+    emoji:"💪", name:"Collagen Complex", who:"Sky only",
+    currentBrand:"Professional Health Products", nextBrand:"Professional Health Products",
+    bottleCount:90, dailyDose:2, daysSupply:45,
+    buyQty:2, daysPerOrder:59,
+    status:"ok",
+    reorderDays:31,
+    where:"PeoplesRx",
+    note:"Do not replace — BioCell Collagen + OptiMSM formula is purpose-built for Sky's DDD. 7 human clinical trials. No equivalent at Thorne or Jarrow.",
+    action:"Buy 2 bottles Collagen Complex every ~59 days at PeoplesRx"
+  },
+  {
+    emoji:"🎃", name:"Pumpkin Seed Oil", who:"Sky only",
+    currentBrand:"Micro Ingredients", nextBrand:"Micro Ingredients",
+    bottleCount:300, dailyDose:2, daysSupply:150,
+    buyQty:1, daysPerOrder:136,
+    status:"ok",
+    reorderDays:136,
+    where:"PeoplesRx (if stocked) or brand direct",
+    note:"Longest runway in the stack — 1 bottle lasts 150 days (~5 months). Cold-pressed, non-irradiated, non-GMO. Best available in category. Check if PeoplesRx stocks this — if not, order direct from Micro Ingredients website (not Amazon).",
+    action:"Reorder 1 bottle every ~136 days"
+  },
+  {
+    emoji:"🌍", name:"Boron", who:"Sky only",
+    currentBrand:"Pure Encapsulations (current)", nextBrand:"Thorne Boron",
+    bottleCount:60, dailyDose:1, daysSupply:60,
+    buyQty:2, daysPerOrder:106,
+    status:"swap",
+    reorderDays:46,
+    where:"PeoplesRx",
+    note:"Finish current Pure Encapsulations Boron (60 days). No urgent safety concern on this specific product. When it runs out: switch to Thorne Boron (3mg boron glycinate, NSF certified). Synergizes with BoneUp + ADK for bone health and DDD support.",
+    action:"Order Thorne Boron when Pure Encaps runs out (~46 days)"
+  },
+  {
+    emoji:"⚡", name:"CoQ10", who:"Both",
+    currentBrand:"Not yet started", nextBrand:"Thorne CoQ10",
+    bottleCount:60, dailyDose:2, daysSupply:30,
+    buyQty:2, daysPerOrder:44,
+    status:"pending",
+    reorderDays:null,
+    where:"PeoplesRx",
+    note:"Adding to stack when ready. Thorne CoQ10 — NSF Certified for Sport. 100mg each daily, taken with a fat-containing meal for best absorption. Especially valuable for Sky (DDD — mitochondrial/muscle recovery support).",
+    action:"Pick up 2 bottles Thorne CoQ10 at PeoplesRx when ready to start"
+  },
+  {
+    emoji:"🏋️", name:"Creatine", who:"Both",
+    currentBrand:"Not yet started", nextBrand:"Thorne Creatine",
+    bottleCount:90, dailyDose:2, daysSupply:45,
+    buyQty:2, daysPerOrder:59,
+    status:"pending",
+    reorderDays:null,
+    where:"PeoplesRx",
+    note:"Adding to stack when ready. Thorne Creatine — NSF Certified for Sport, single ingredient. 5g each daily (tasteless, mix in water or shake). Takes 3–4 weeks of consistent use to feel effects. Consider 10g for brain benefits.",
+    action:"Pick up 2 bottles Thorne Creatine at PeoplesRx when ready to start"
+  },
+];
+
+// Live supply state — merged from defaults + Firebase
+let supplyState = {};
+
+// Load supply data from Firebase, merge with defaults
+async function loadSupplyData() {
+  try {
+    const snap = await getDocs(collection(db, "supply_tracker"));
+    snap.docs.forEach(d => { supplyState[d.id] = d.data(); });
+  } catch(e) { console.warn("Supply load error:", e); }
+  if (currentView === "supply") renderSupply();
+}
+
+// Save a single supplement's supply data to Firebase
+async function saveSupplyItem(key, data) {
+  const status = document.getElementById("saveStatus");
+  status.textContent = "💾";
+  try {
+    await setDoc(doc(db, "supply_tracker", key), data);
+    supplyState[key] = data;
+    status.textContent = "✓ Saved";
+  } catch(e) {
+    status.textContent = "⚠️ Failed";
+    console.warn("Supply save error:", e);
+  }
+}
+
+// Compute days remaining based on open date + bottle count + daily dose
+function computeDaysRemaining(s, live) {
+  const openDate   = live.openDate || null;
+  const bottleCount = live.bottleCount ?? s.bottleCount;
+  const dailyDose   = live.dailyDose  ?? s.dailyDose;
+  const bottlesOpen = live.bottlesOpen ?? 1;
+  if (!openDate || s.status === "pending") return null;
+  const daysPerBottle = Math.floor(bottleCount / dailyDose);
+  const totalDays     = daysPerBottle * bottlesOpen;
+  const opened        = new Date(openDate);
+  const today         = new Date();
+  const elapsed       = Math.floor((today - opened) / 86400000);
+  return Math.max(0, totalDays - elapsed);
+}
+
+function computeStatus(s, live, daysLeft) {
+  if (s.status === "pending") return "pending";
+  if (s.status === "critical") return "critical";
+  if (s.status === "swap") return "swap";
+  if (daysLeft === null) return s.status;
+  if (daysLeft <= 14)  return "critical";
+  if (daysLeft <= 28)  return "low";
+  return "ok";
+}
+
+// Open edit drawer for a supplement
+function openSupplyEdit(key) {
+  document.getElementById("supply-drawer-" + key).style.display = "block";
+}
+function closeSupplyEdit(key) {
+  document.getElementById("supply-drawer-" + key).style.display = "none";
+}
+
+async function saveSupplyEdit(key) {
+  const def   = SUPPLY_DEFAULTS.find(s => s.name.replace(/\s+/g,"-").toLowerCase() === key);
+  const live  = { ...supplyState[key] };
+  const bottle = document.getElementById(`sf-bottle-${key}`).value;
+  const dose   = document.getElementById(`sf-dose-${key}`).value;
+  const opened = document.getElementById(`sf-opened-${key}`).value;
+  const bottlesOpen = document.getElementById(`sf-bottles-${key}`).value;
+  const brand  = document.getElementById(`sf-brand-${key}`).value;
+  const where  = document.getElementById(`sf-where-${key}`).value;
+  if (bottle)     live.bottleCount  = parseInt(bottle);
+  if (dose)       live.dailyDose    = parseInt(dose);
+  if (opened)     live.openDate     = opened;
+  if (bottlesOpen) live.bottlesOpen = parseInt(bottlesOpen);
+  if (brand)      live.brand        = brand;
+  if (where)      live.where        = where;
+  await saveSupplyItem(key, live);
+  closeSupplyEdit(key);
+  renderSupply();
+}
+
+// ── Render: Supply Tracker ─────────────────────────────────────
+function renderSupply() {
+  const statusOrder = { critical:0, low:1, swap:2, ok:3, pending:4 };
+
+  const merged = SUPPLY_DEFAULTS.map(s => {
+    const key  = s.name.replace(/\s+/g,"-").toLowerCase();
+    const live = supplyState[key] || {};
+    const bottleCount = live.bottleCount ?? s.bottleCount;
+    const dailyDose   = live.dailyDose   ?? s.dailyDose;
+    const daysPerBottle = dailyDose > 0 ? Math.floor(bottleCount / dailyDose) : s.daysSupply;
+    const daysLeft    = computeDaysRemaining(s, live);
+    const status      = computeStatus(s, live, daysLeft);
+    const brand       = live.brand || s.currentBrand;
+    const where       = live.where || s.where;
+    const bottlesOpen = live.bottlesOpen ?? 1;
+    const openDate    = live.openDate || null;
+    const reorderDay  = daysLeft !== null ? Math.max(0, daysLeft - 14) : null;
+    return { ...s, key, bottleCount, dailyDose, daysPerBottle, daysLeft, status, brand, where, bottlesOpen, openDate, reorderDay };
+  }).sort((a,b) => statusOrder[a.status] - statusOrder[b.status]);
+
+  const counts = { critical:0, low:0, swap:0, ok:0, pending:0 };
+  merged.forEach(s => counts[s.status]++);
+
+  const chips = [
+    counts.critical ? `<div class="supply-summary-chip" style="border-color:var(--danger);color:var(--danger)">⚠️ ${counts.critical} urgent</div>` : "",
+    counts.low      ? `<div class="supply-summary-chip" style="border-color:var(--warn);color:var(--warn)">🟡 ${counts.low} low</div>` : "",
+    counts.swap     ? `<div class="supply-summary-chip" style="border-color:#a78bfa;color:#a78bfa">🔄 ${counts.swap} to swap</div>` : "",
+    counts.ok       ? `<div class="supply-summary-chip" style="border-color:var(--success);color:var(--success)">✓ ${counts.ok} stocked</div>` : "",
+    counts.pending  ? `<div class="supply-summary-chip">⏳ ${counts.pending} pending</div>` : "",
+  ].join("");
+
+  const statusLabel = { critical:"Order Now", low:"Running Low", swap:"Swap Next", ok:"Stocked", pending:"Not Started" };
+  const badgeClass  = { critical:"badge-critical", low:"badge-low", swap:"badge-swap", ok:"badge-ok", pending:"badge-pending" };
+  const cardClass   = { critical:"status-critical", low:"status-low", swap:"status-swap", ok:"status-ok", pending:"status-pending" };
+
+  const cards = merged.map(s => {
+    const whoColor = s.who === "Both" ? "#7c3aed" : s.who === "Sky only" ? "var(--sky)" : "var(--meagan)";
+    const barPct   = s.daysLeft === null ? (s.status === "pending" ? 5 : 80) :
+                     Math.min(100, Math.round((s.daysLeft / (s.daysPerBottle * s.bottlesOpen || 1)) * 100));
+    const barColor = s.status === "pending"  ? "var(--muted)" :
+                     s.status === "critical" ? "var(--danger)" :
+                     s.status === "low"      ? "var(--warn)" :
+                     s.status === "swap"     ? "#a78bfa" : "var(--success)";
+    const daysLeftDisplay = s.daysLeft === null
+      ? (s.status === "pending" ? "Not started" : "Set open date ↓")
+      : `${s.daysLeft} days left`;
+    const daysLeftColor = s.daysLeft === null ? "var(--muted)" :
+                          s.daysLeft <= 14 ? "var(--danger)" :
+                          s.daysLeft <= 28 ? "var(--warn)" : "var(--success)";
+    const reorderDisplay = s.reorderDay !== null
+      ? (s.reorderDay <= 0 ? "Reorder now!" : `Reorder in ${s.reorderDay} days`)
+      : "—";
+    const brandDisplay = (s.status === "swap" || s.status === "critical") && s.nextBrand !== s.currentBrand
+      ? `<span style="text-decoration:line-through;color:var(--muted);font-size:10px">${s.brand}</span><br><span style="color:var(--accent)">${s.nextBrand}</span>`
+      : s.status === "pending" ? `<span style="color:var(--muted)">${s.nextBrand}</span>`
+      : s.brand;
+
+    return `
+    <div class="supply-card ${cardClass[s.status]}" id="scard-${s.key}">
+      <div class="supply-header">
+        <div class="supply-name">
+          <span style="font-size:20px">${s.emoji}</span>
+          <span>${s.name}</span>
+          <span class="supply-who" style="background:${whoColor}22;color:${whoColor};border:1px solid ${whoColor}44">${s.who}</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="supply-status-badge ${badgeClass[s.status]}">${statusLabel[s.status]}</span>
+          <button onclick="openSupplyEdit('${s.key}')"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+            color:var(--muted);font-size:11px;padding:3px 8px;cursor:pointer;font-family:var(--font-body)">✏️ Edit</button>
+        </div>
+      </div>
+
+      <div class="supply-bar-bg">
+        <div class="supply-bar-fill" style="width:${barPct}%;background:${barColor}"></div>
+      </div>
+
+      <div class="supply-grid-3" style="margin-top:8px">
+        <div class="supply-stat">
+          <div class="supply-stat-label">Bottle size</div>
+          <div class="supply-stat-val">${s.bottleCount} count</div>
+        </div>
+        <div class="supply-stat">
+          <div class="supply-stat-label">Daily dose</div>
+          <div class="supply-stat-val">${s.dailyDose}/day</div>
+        </div>
+        <div class="supply-stat">
+          <div class="supply-stat-label">Days/bottle</div>
+          <div class="supply-stat-val">${s.daysPerBottle} days</div>
+        </div>
+      </div>
+
+      <div class="supply-grid-3">
+        <div class="supply-stat">
+          <div class="supply-stat-label">Bottles open</div>
+          <div class="supply-stat-val">${s.bottlesOpen}</div>
+        </div>
+        <div class="supply-stat">
+          <div class="supply-stat-label">Days remaining</div>
+          <div class="supply-stat-val" style="color:${daysLeftColor}">${daysLeftDisplay}</div>
+        </div>
+        <div class="supply-stat">
+          <div class="supply-stat-label">Reorder trigger</div>
+          <div class="supply-stat-val" style="color:${s.reorderDay !== null && s.reorderDay <= 0 ? "var(--danger)" : "var(--text)"}">${reorderDisplay}</div>
+        </div>
+      </div>
+
+      <div class="supply-grid">
+        <div class="supply-stat">
+          <div class="supply-stat-label">Brand</div>
+          <div class="supply-stat-val" style="font-size:11px;line-height:1.5">${brandDisplay}</div>
+        </div>
+        <div class="supply-stat">
+          <div class="supply-stat-label">Buy at</div>
+          <div class="supply-stat-val" style="font-size:11px">${s.where}</div>
+        </div>
+      </div>
+
+      <div class="supply-stat" style="margin-bottom:8px">
+        <div class="supply-stat-label">Reorder strategy</div>
+        <div class="supply-stat-val" style="font-size:11px">Buy ${s.buyQty} bottle${s.buyQty > 1 ? "s" : ""} · ${s.buyQty * s.daysPerBottle} days supply · buffer 14 days</div>
+      </div>
+
+      <div class="supply-note">
+        <div style="margin-bottom:4px;color:var(--text);font-size:11px;font-weight:700">📦 ${s.action}</div>
+        ${s.note}
+      </div>
+
+      <!-- Edit Drawer -->
+      <div id="supply-drawer-${s.key}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">✏️ Edit Supply Details</div>
+        <div class="supply-grid" style="margin-bottom:8px">
+          <div>
+            <div class="supply-stat-label" style="margin-bottom:4px">Bottle count (pills)</div>
+            <input id="sf-bottle-${s.key}" type="number" placeholder="${s.bottleCount}"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+              color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+          </div>
+          <div>
+            <div class="supply-stat-label" style="margin-bottom:4px">Daily dose (pills/day)</div>
+            <input id="sf-dose-${s.key}" type="number" placeholder="${s.dailyDose}"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+              color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+          </div>
+        </div>
+        <div class="supply-grid" style="margin-bottom:8px">
+          <div>
+            <div class="supply-stat-label" style="margin-bottom:4px">Date opened</div>
+            <input id="sf-opened-${s.key}" type="date" value="${s.openDate || ''}"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+              color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+          </div>
+          <div>
+            <div class="supply-stat-label" style="margin-bottom:4px">Bottles currently open</div>
+            <input id="sf-bottles-${s.key}" type="number" placeholder="${s.bottlesOpen}" min="1"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+              color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div class="supply-stat-label" style="margin-bottom:4px">Brand</div>
+          <input id="sf-brand-${s.key}" type="text" placeholder="${s.brand}"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+            color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="supply-stat-label" style="margin-bottom:4px">Purchase location</div>
+          <input id="sf-where-${s.key}" type="text" placeholder="${s.where}"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+            color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="saveSupplyEdit('${s.key}')"
+            style="flex:1;background:var(--accent);color:#0d0f14;border:none;border-radius:8px;
+            padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body)">Save Changes</button>
+          <button onclick="closeSupplyEdit('${s.key}')"
+            style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;
+            padding:10px 16px;font-size:13px;cursor:pointer;font-family:var(--font-body)">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("tab_supply").innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      Reorder buffer: 14 days. Tap ✏️ Edit on any supplement to update bottle count, dose, or open date — saves automatically.
+    </div>
+    <div class="supply-summary-bar">${chips}</div>
+    <div class="reorder-tip">
+      💡 <strong>PeoplesRx:</strong> Primary source for Thorne, Jarrow, Xymogen, and Professional Health Products.
+      Fast-cycling items (MagMind, Magnesium) — ask about recurring orders.
+      Pumpkin Seed Oil — check stock first, otherwise order direct from Micro Ingredients website.
+    </div>
+    ${cards}`;
+
+  // Re-expose edit functions to global scope after re-render
+  window.openSupplyEdit  = openSupplyEdit;
+  window.closeSupplyEdit = closeSupplyEdit;
+  window.saveSupplyEdit  = saveSupplyEdit;
+}
+
+
 function renderInfo() {
   const cards = SUPPLEMENT_INFO.map(s => {
     const whoColor = s.who === "Both" ? "#7c3aed" : s.who === "Sky only" ? "var(--sky)" : "var(--meagan)";
@@ -761,17 +1213,17 @@ function renderAll() {
   if (currentView === "today")     renderToday();
   if (currentView === "history")   renderHistory();
   if (currentView === "dashboard") renderDashboard();
+  if (currentView === "supply")    renderSupply();
   if (currentView === "info")      renderInfo();
 }
 
 // ── View / state setters ──────────────────────────────────────
 function setView(v) {
   currentView = v;
-  ["today","history","dashboard","info"].forEach(x => {
+  ["today","history","dashboard","supply","info"].forEach(x => {
     document.getElementById("btn_"+x).className   = "tab-btn" + (v===x?" active":"");
     document.getElementById("tab_"+x).className   = "tab-panel" + (v===x?" active":"");
   });
-  // Trigger background history load if switching away from today
   renderAll();
 }
 
@@ -787,12 +1239,16 @@ window.setTime      = setTime;
 window.setDashRange = setDashRange;
 window.openEditDay  = openEditDay;
 window.closeEditDay = closeEditDay;
+window.openSupplyEdit  = openSupplyEdit;
+window.closeSupplyEdit = closeSupplyEdit;
+window.saveSupplyEdit  = saveSupplyEdit;
 
 // ── Boot ──────────────────────────────────────────────────────
 document.getElementById("dateLabel").textContent =
   new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
 loadData();
+loadSupplyData();
 </script>
 </body>
 </html>
