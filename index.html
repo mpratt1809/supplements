@@ -896,16 +896,44 @@ const SUPPLY_DEFAULTS = [
     note:"Adding to stack when ready. Thorne Creatine — NSF Certified for Sport, single ingredient. 5g each daily (tasteless, mix in water or shake). Takes 3–4 weeks of consistent use to feel effects. Consider 10g for brain benefits.",
     action:"Pick up 2 bottles Thorne Creatine at PeoplesRx when ready to start"
   },
+  {
+    emoji:"🧘", name:"Cortisolv", who:"Meagan only",
+    currentBrand:"Xymogen", nextBrand:"Eliminating — replaced by Thorne Ashwagandha",
+    bottleCount:90, dailyDose:1, daysSupply:90,
+    buyQty:1, daysPerOrder:90,
+    status:"swap",
+    reorderDays:null,
+    where:"PeoplesRx (Xymogen)",
+    note:"Plan to eliminate Cortisolv when switching Stress Care to Thorne Ashwagandha — both target cortisol regulation. 70 pills remaining (~70 days). Confirm timing with practitioner before discontinuing. Do not reorder.",
+    action:"Do not reorder — eliminate when current supply runs out (~70 days at 1/day)"
+  },
 ];
 
 // Live supply state — merged from defaults + Firebase
-let supplyState = {};
+// Pre-seeded with exact pill counts from physical inventory (March 30 2026)
+// Firebase will override these on load if data exists there already
+let supplyState = {
+  "magnesium-glycinate":             { pillsRemaining: 0   },  // Out — stopped Pure Encaps, need to buy Thorne Magnesium Bisglycinate
+  "b-complex":                       { pillsRemaining: 75  },  // 75 ÷ 2/day = 37 days (Pure Encaps 15 + Ortho Molecular 60)
+  "adk-(a-+-d3-+-k2)":              { pillsRemaining: 92  },  // 92 ÷ 2/day = 46 days
+  "magnesium-l-threonate-(magmind)": { pillsRemaining: 202 },  // 202 ÷ 4/day = 50 days
+  "stress-care-/-ashwagandha":       { pillsRemaining: 110 },  // 110 ÷ 4/day = 27 days 🟡
+  "pumpkin-seed-oil":                { pillsRemaining: 65  },  // 65 ÷ 2/day = 32 days 🟡
+  "boron":                           { pillsRemaining: 39  },  // 39 ÷ 1/day = 39 days
+  "collagen-complex":                { pillsRemaining: 45  },  // 45 ÷ 2/day = 22 days 🟡
+  "bone-up":                         { pillsRemaining: 73  },  // 73 ÷ 2/day = 36 days 🟡
+  "cortisolv":                       { pillsRemaining: 70  },  // dose TBC from Meagan
+};
 
-// Load supply data from Firebase, merge with defaults
+// Load supply data from Firebase — merges ON TOP of pre-seeded defaults
+// Firebase wins for any key that exists there
 async function loadSupplyData() {
   try {
     const snap = await getDocs(collection(db, "supply_tracker"));
-    snap.docs.forEach(d => { supplyState[d.id] = d.data(); });
+    snap.docs.forEach(d => {
+      // Deep merge: Firebase data overrides pre-seeded values
+      supplyState[d.id] = { ...supplyState[d.id], ...d.data() };
+    });
   } catch(e) { console.warn("Supply load error:", e); }
   if (currentView === "supply") renderSupply();
 }
@@ -925,10 +953,15 @@ async function saveSupplyItem(key, data) {
 }
 
 // Compute days remaining based on open date + bottle count + daily dose
+// If pillsRemaining override is set, use that directly
 function computeDaysRemaining(s, live) {
-  const openDate   = live.openDate || null;
-  const bottleCount = live.bottleCount ?? s.bottleCount;
   const dailyDose   = live.dailyDose  ?? s.dailyDose;
+  // Manual override takes priority
+  if (live.pillsRemaining !== undefined && live.pillsRemaining !== null && live.pillsRemaining !== "") {
+    return dailyDose > 0 ? Math.floor(live.pillsRemaining / dailyDose) : 0;
+  }
+  const openDate    = live.openDate || null;
+  const bottleCount = live.bottleCount ?? s.bottleCount;
   const bottlesOpen = live.bottlesOpen ?? 1;
   if (!openDate || s.status === "pending") return null;
   const daysPerBottle = Math.floor(bottleCount / dailyDose);
@@ -941,6 +974,7 @@ function computeDaysRemaining(s, live) {
 
 function computeStatus(s, live, daysLeft) {
   if (s.status === "pending") return "pending";
+  if (daysLeft === 0) return "critical";
   if (s.status === "critical") return "critical";
   if (s.status === "swap") return "swap";
   if (daysLeft === null) return s.status;
@@ -960,18 +994,21 @@ function closeSupplyEdit(key) {
 async function saveSupplyEdit(key) {
   const def   = SUPPLY_DEFAULTS.find(s => s.name.replace(/\s+/g,"-").toLowerCase() === key);
   const live  = { ...supplyState[key] };
-  const bottle = document.getElementById(`sf-bottle-${key}`).value;
-  const dose   = document.getElementById(`sf-dose-${key}`).value;
-  const opened = document.getElementById(`sf-opened-${key}`).value;
+  const bottle    = document.getElementById(`sf-bottle-${key}`).value;
+  const dose      = document.getElementById(`sf-dose-${key}`).value;
+  const opened    = document.getElementById(`sf-opened-${key}`).value;
   const bottlesOpen = document.getElementById(`sf-bottles-${key}`).value;
-  const brand  = document.getElementById(`sf-brand-${key}`).value;
-  const where  = document.getElementById(`sf-where-${key}`).value;
-  if (bottle)     live.bottleCount  = parseInt(bottle);
-  if (dose)       live.dailyDose    = parseInt(dose);
-  if (opened)     live.openDate     = opened;
-  if (bottlesOpen) live.bottlesOpen = parseInt(bottlesOpen);
-  if (brand)      live.brand        = brand;
-  if (where)      live.where        = where;
+  const remaining = document.getElementById(`sf-remaining-${key}`).value;
+  const brand     = document.getElementById(`sf-brand-${key}`).value;
+  const where     = document.getElementById(`sf-where-${key}`).value;
+  if (bottle)     live.bottleCount   = parseInt(bottle);
+  if (dose)       live.dailyDose     = parseInt(dose);
+  if (opened)     live.openDate      = opened;
+  if (bottlesOpen) live.bottlesOpen  = parseInt(bottlesOpen);
+  if (remaining !== "") live.pillsRemaining = remaining === "0" ? 0 : (parseInt(remaining) || null);
+  else live.pillsRemaining = null; // clear override if blank
+  if (brand)      live.brand         = brand;
+  if (where)      live.where         = where;
   await saveSupplyItem(key, live);
   closeSupplyEdit(key);
   renderSupply();
@@ -1020,9 +1057,11 @@ function renderSupply() {
                      s.status === "critical" ? "var(--danger)" :
                      s.status === "low"      ? "var(--warn)" :
                      s.status === "swap"     ? "#a78bfa" : "var(--success)";
+    const overrideActive = supplyState[s.key]?.pillsRemaining !== null && supplyState[s.key]?.pillsRemaining !== undefined;
     const daysLeftDisplay = s.daysLeft === null
       ? (s.status === "pending" ? "Not started" : "Set open date ↓")
-      : `${s.daysLeft} days left`;
+      : s.daysLeft === 0 ? "⚠️ Out of stock"
+      : `${s.daysLeft} days left${overrideActive ? " ✎" : ""}`;
     const daysLeftColor = s.daysLeft === null ? "var(--muted)" :
                           s.daysLeft <= 14 ? "var(--danger)" :
                           s.daysLeft <= 28 ? "var(--warn)" : "var(--success)";
@@ -1135,6 +1174,13 @@ function renderSupply() {
               style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
               color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
           </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div class="supply-stat-label" style="margin-bottom:4px">Pills remaining override <span style="font-weight:400;font-style:italic">(optional — overrides date calc if set)</span></div>
+          <input id="sf-remaining-${s.key}" type="number" placeholder="${supplyState[s.key]?.pillsRemaining ?? 'Leave blank to use date calculation'}" min="0"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+            color:var(--text);font-size:13px;padding:7px 10px;font-family:var(--font-body)">
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Use this if you spilled some, combined bottles, or want to manually set the count.</div>
         </div>
         <div style="margin-bottom:8px">
           <div class="supply-stat-label" style="margin-bottom:4px">Brand</div>
