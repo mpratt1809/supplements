@@ -254,8 +254,7 @@ header {
       <button class="tab-btn active" id="btn_today"     onclick="setView('today')">📋 Today</button>
       <button class="tab-btn"        id="btn_history"   onclick="setView('history')">📅 History</button>
       <button class="tab-btn"        id="btn_dashboard" onclick="setView('dashboard')">📊 Trends</button>
-      <button class="tab-btn"        id="btn_supply"    onclick="setView('supply')">🛒 Supply</button>
-      <button class="tab-btn"        id="btn_info"      onclick="setView('info')">💡 Info</button>
+      <button class="tab-btn"        id="btn_info"      onclick="setView('info')">💡 Info & Supply</button>
     </div>
   </div>
 </header>
@@ -281,7 +280,7 @@ header {
     <div class="tab-panel active" id="tab_today"></div>
     <div class="tab-panel"        id="tab_history"></div>
     <div class="tab-panel"        id="tab_dashboard"></div>
-    <div class="tab-panel"        id="tab_supply"></div>
+    <div class="tab-panel"        id="tab_supply" style="display:none"></div>
     <div class="tab-panel"        id="tab_info"></div>
   </div>
 </div>
@@ -766,14 +765,14 @@ const SUPPLY_DEFAULTS = [
   // pending = not yet started / adding to stack
   {
     emoji:"🌙", name:"Magnesium Glycinate", who:"Both",
-    currentBrand:"Pure Encapsulations (stopped)", nextBrand:"Thorne Magnesium Bisglycinate",
+    currentBrand:"Thorne Magnesium Bisglycinate", nextBrand:"Thorne Magnesium Bisglycinate",
     bottleCount:60, dailyDose:2, daysSupply:30,
-    buyQty:2, daysPerOrder:44,
-    status:"critical",
+    buyQty:1, daysPerOrder:30,
+    status:"ok",
     reorderDays:16,
-    where:"PeoplesRx",
-    note:"⚠️ Currently out — stopped Pure Encapsulations due to lead contamination (Sept 2025 independent lab test). Switching to Thorne Magnesium Bisglycinate powder — 60 servings/jar, 1 scoop each per day = 30 days per jar. NSF Certified for Sport. Take in the evening before bed. Buy 2 jars at a time (60 days supply), reorder when 1 jar remains (~14 days).",
-    action:"Buy 2 jars Thorne Magnesium Bisglycinate powder at PeoplesRx — needed now"
+    where:"Thorne.com (monthly subscription)",
+    note:"Switched from Pure Encapsulations due to lead contamination (Sept 2025). Thorne Magnesium Bisglycinate powder — 60 servings/jar, 1 scoop each per day = 30 days per jar. NSF Certified for Sport. On monthly subscription via Thorne.com. Take in the evening before bed.",
+    action:"Auto-ships monthly via Thorne.com subscription"
   },
   {
     emoji:"⚡", name:"B-Complex", who:"Both",
@@ -876,25 +875,25 @@ const SUPPLY_DEFAULTS = [
   },
   {
     emoji:"⚡", name:"CoQ10", who:"Both",
-    currentBrand:"Not yet started", nextBrand:"Thorne CoQ10",
+    currentBrand:"Thorne CoQ10", nextBrand:"Thorne CoQ10",
     bottleCount:60, dailyDose:2, daysSupply:30,
-    buyQty:2, daysPerOrder:44,
-    status:"pending",
-    reorderDays:null,
-    where:"PeoplesRx",
-    note:"Adding to stack when ready. Thorne CoQ10 — NSF Certified for Sport. 100mg each daily, taken with a fat-containing meal for best absorption. Especially valuable for Sky (DDD — mitochondrial/muscle recovery support).",
-    action:"Pick up 2 bottles Thorne CoQ10 at PeoplesRx when ready to start"
+    buyQty:1, daysPerOrder:30,
+    status:"ok",
+    reorderDays:16,
+    where:"Thorne.com (monthly subscription)",
+    note:"Thorne CoQ10 — NSF Certified for Sport. 100mg each daily, taken with a fat-containing meal for best absorption. On monthly subscription via Thorne.com. Especially valuable for Sky (DDD — mitochondrial/muscle recovery support).",
+    action:"Auto-ships monthly via Thorne.com subscription"
   },
   {
     emoji:"🏋️", name:"Creatine", who:"Both",
-    currentBrand:"Not yet started", nextBrand:"Thorne Creatine",
-    bottleCount:90, dailyDose:2, daysSupply:45,
-    buyQty:2, daysPerOrder:59,
-    status:"pending",
-    reorderDays:null,
-    where:"PeoplesRx",
-    note:"Adding to stack when ready. Thorne Creatine — NSF Certified for Sport, single ingredient. 5g each daily (tasteless, mix in water or shake). Takes 3–4 weeks of consistent use to feel effects. Consider 10g for brain benefits.",
-    action:"Pick up 2 bottles Thorne Creatine at PeoplesRx when ready to start"
+    currentBrand:"Thorne Creatine", nextBrand:"Thorne Creatine",
+    bottleCount:180, dailyDose:2, daysSupply:90,
+    buyQty:1, daysPerOrder:90,
+    status:"ok",
+    reorderDays:76,
+    where:"Thorne.com (every 3 months subscription)",
+    note:"Thorne Creatine — NSF Certified for Sport, single ingredient. 180-serving tub. 1 scoop each per day (5g) = 90 days per tub. On 3-month subscription via Thorne.com. Mix in water or shake, any time of day. Takes 3–4 weeks of consistent use to feel effects.",
+    action:"Auto-ships every 3 months via Thorne.com subscription"
   },
   {
     emoji:"🧘", name:"Cortisolv", who:"Meagan only",
@@ -913,16 +912,18 @@ const SUPPLY_DEFAULTS = [
 // Pre-seeded with exact pill counts from physical inventory (March 30 2026)
 // Firebase will override these on load if data exists there already
 let supplyState = {
-  "magnesium-glycinate":             { pillsRemaining: 0   },  // Out — stopped Pure Encaps, need to buy Thorne Magnesium Bisglycinate
-  "b-complex":                       { pillsRemaining: 75  },  // 75 ÷ 2/day = 37 days (Pure Encaps 15 + Ortho Molecular 60)
+  "magnesium-glycinate":             { pillsRemaining: 60  },  // 1 full jar from Thorne.com = 30 days (60 servings ÷ 2/day)
+  "coq10":                           { pillsRemaining: 60  },  // 1 bottle from Thorne.com = 30 days
+  "creatine":                        { pillsRemaining: 180 },  // 180-serving tub = 90 days
+  "b-complex":                       { pillsRemaining: 75  },  // 75 ÷ 2/day = 37 days
   "adk-(a-+-d3-+-k2)":              { pillsRemaining: 92  },  // 92 ÷ 2/day = 46 days
   "magnesium-l-threonate-(magmind)": { pillsRemaining: 202 },  // 202 ÷ 4/day = 50 days
-  "stress-care-/-ashwagandha":       { pillsRemaining: 110 },  // 110 ÷ 4/day = 27 days 🟡
-  "pumpkin-seed-oil":                { pillsRemaining: 65  },  // 65 ÷ 2/day = 32 days 🟡
+  "stress-care-/-ashwagandha":       { pillsRemaining: 110 },  // 110 ÷ 4/day = 27 days
+  "pumpkin-seed-oil":                { pillsRemaining: 65  },  // 65 ÷ 2/day = 32 days
   "boron":                           { pillsRemaining: 39  },  // 39 ÷ 1/day = 39 days
-  "collagen-complex":                { pillsRemaining: 45  },  // 45 ÷ 2/day = 22 days 🟡
-  "bone-up":                         { pillsRemaining: 73  },  // 73 ÷ 2/day = 36 days 🟡
-  "cortisolv":                       { pillsRemaining: 70  },  // dose TBC from Meagan
+  "collagen-complex":                { pillsRemaining: 45  },  // 45 ÷ 2/day = 22 days
+  "bone-up":                         { pillsRemaining: 73  },  // 73 ÷ 2/day = 36 days
+  "cortisolv":                       { pillsRemaining: 70  },  // 70 ÷ 1/day = 70 days
 };
 
 // Load supply data from Firebase — merges ON TOP of pre-seeded defaults
@@ -1015,7 +1016,7 @@ async function saveSupplyEdit(key) {
 }
 
 // ── Render: Supply Tracker ─────────────────────────────────────
-function renderSupply() {
+function buildSupplyHTML() {
   const statusOrder = { critical:0, low:1, swap:2, ok:3, pending:4 };
 
   const merged = SUPPLY_DEFAULTS.map(s => {
@@ -1206,14 +1207,14 @@ function renderSupply() {
     </div>`;
   }).join("");
 
-  document.getElementById("tab_supply").innerHTML = `
+  const html = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
       Reorder buffer: 14 days. Tap ✏️ Edit on any supplement to update bottle count, dose, or open date — saves automatically.
     </div>
     <div class="supply-summary-bar">${chips}</div>
     <div class="reorder-tip">
       💡 <strong>PeoplesRx:</strong> Primary source for Thorne, Jarrow, Xymogen, and Professional Health Products.
-      Fast-cycling items (MagMind, Magnesium) — ask about recurring orders.
+      Magnesium, CoQ10, Creatine — on Thorne.com monthly/quarterly subscription.
       Pumpkin Seed Oil — check stock first, otherwise order direct from Micro Ingredients website.
     </div>
     ${cards}`;
@@ -1222,6 +1223,12 @@ function renderSupply() {
   window.openSupplyEdit  = openSupplyEdit;
   window.closeSupplyEdit = closeSupplyEdit;
   window.saveSupplyEdit  = saveSupplyEdit;
+
+  return html;
+}
+
+function renderSupply() {
+  document.getElementById("tab_supply").innerHTML = buildSupplyHTML();
 }
 
 
@@ -1248,9 +1255,16 @@ function renderInfo() {
     </div>`;
   }).join("");
 
+  // Build supply section inline
+  const supplyHTML = buildSupplyHTML();
+
   document.getElementById("tab_info").innerHTML = `
     <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Full reference guide for all supplements.</p>
-    ${cards}`;
+    ${cards}
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+      <p style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px">🛒 Supply Tracker</p>
+      ${supplyHTML}
+    </div>`;
 }
 
 // ── Render all ────────────────────────────────────────────────
@@ -1259,16 +1273,17 @@ function renderAll() {
   if (currentView === "today")     renderToday();
   if (currentView === "history")   renderHistory();
   if (currentView === "dashboard") renderDashboard();
-  if (currentView === "supply")    renderSupply();
   if (currentView === "info")      renderInfo();
 }
 
 // ── View / state setters ──────────────────────────────────────
 function setView(v) {
   currentView = v;
-  ["today","history","dashboard","supply","info"].forEach(x => {
-    document.getElementById("btn_"+x).className   = "tab-btn" + (v===x?" active":"");
-    document.getElementById("tab_"+x).className   = "tab-panel" + (v===x?" active":"");
+  ["today","history","dashboard","info"].forEach(x => {
+    const btn = document.getElementById("btn_"+x);
+    const tab = document.getElementById("tab_"+x);
+    if (btn) btn.className = "tab-btn" + (v===x?" active":"");
+    if (tab) tab.className = "tab-panel" + (v===x?" active":"");
   });
   renderAll();
 }
