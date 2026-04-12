@@ -311,10 +311,12 @@ const SUPPLEMENTS = {
     { name:"Stress Care",           time:"morning",   emoji:"🌿", reason:"Adaptogens regulate morning cortisol" },
     { name:"B-Complex Plus",        time:"morning",   emoji:"⚡", reason:"Energy & stress response, with food" },
     { name:"Omega-3 / Fish Oil",    time:"evening",   emoji:"🐟", reason:"Best absorbed with dinner" },
+    { name:"CoQ10",                 time:"morning",   emoji:"⚡", reason:"Cellular energy, best absorbed with fat" },
+    { name:"Creatine",              time:"morning",   emoji:"🏋️", reason:"Mix in water or shake, any time of day" },
     { name:"Bone-Up",               time:"afternoon", emoji:"🦴", reason:"Calcium with food, away from other minerals" },
-    { name:"Boron",                 time:"afternoon", emoji:"⚗️", reason:"Pairs with Bone-Up, enhances calcium uptake", incoming:true },
+    { name:"Boron",                 time:"afternoon", emoji:"⚗️", reason:"Pairs with Bone-Up, enhances calcium uptake" },
     { name:"Pumpkin Seed Oil",      time:"evening",   emoji:"🎃", reason:"Bladder support, best with dinner" },
-    { name:"Collagen Complex",      time:"evening",   emoji:"💪", reason:"Connective tissue repair peaks overnight", incoming:true },
+    { name:"Collagen Complex",      time:"evening",   emoji:"💪", reason:"Connective tissue repair peaks overnight" },
   ],
   meagan: [
     { name:"Magnesium Glycinate",   time:"evening",   emoji:"🌙", reason:"Sleep & muscle relaxation" },
@@ -323,22 +325,104 @@ const SUPPLEMENTS = {
     { name:"Stress Care",           time:"morning",   emoji:"🌿", reason:"Adaptogens regulate morning cortisol" },
     { name:"B-Complex Plus",        time:"morning",   emoji:"⚡", reason:"Energy & stress response, with food" },
     { name:"Omega-3 / Fish Oil",    time:"evening",   emoji:"🐟", reason:"Best absorbed with dinner" },
+    { name:"CoQ10",                 time:"morning",   emoji:"⚡", reason:"Cellular energy, best absorbed with fat" },
+    { name:"Creatine",              time:"morning",   emoji:"🏋️", reason:"Mix in water or shake, any time of day" },
     { name:"Cortisolv",             time:"morning",   emoji:"🧘", reason:"Cortisol peaks at 8-9am, regulate early" },
   ]
 };
 
 const SUPPLEMENT_INFO = [
-  { name:"Magnesium Glycinate",   emoji:"🌙", who:"Both",        time:"Evening — before bed",          dosage:"200-400mg elemental magnesium",          brand:"Pure Encapsulations",            purpose:"Sleep quality, muscle relaxation, stress reduction",     notes:"Most bioavailable form. Gentle on digestion." },
-  { name:"Magnesium L-Threonate", emoji:"🧠", who:"Both",        time:"Evening — before bed",          dosage:"144mg elemental magnesium (2g Magtein®)",brand:"Life Extension Neuro-Mag",       purpose:"Cognitive function, memory consolidation",               notes:"Only form shown to cross the blood-brain barrier." },
-  { name:"ADK",                   emoji:"☀️", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"DaVinci Laboratories",           purpose:"Immune, bone health, calcium regulation",                notes:"Vitamin K2 (MK-7) directs calcium to bones. Essential with D3." },
-  { name:"Stress Care",           emoji:"🌿", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"Himalaya",                       purpose:"HPA axis support, cortisol regulation",                  notes:"Contains ashwagandha, holy basil. Check overlap with Cortisolv." },
-  { name:"B-Complex Plus",        emoji:"⚡", who:"Both",        time:"Morning — with food",           dosage:"As directed on label",                   brand:"Pure Encapsulations",            purpose:"Energy production, nervous system support",              notes:"Avoid evening — may disrupt sleep." },
-  { name:"Omega-3 / Fish Oil",    emoji:"🐟", who:"Both",        time:"Evening — with dinner",         dosage:"1-2g EPA+DHA combined",                  brand:"As purchased",                   purpose:"Heart health, inflammation, brain, joints",              notes:"Take with largest meal. Triglyceride form preferred." },
-  { name:"Bone-Up",               emoji:"🦴", who:"Sky only",    time:"Afternoon — with food",         dosage:"As directed on label",                   brand:"Jarrow Formulas",                purpose:"Bone density, skeletal support, DDD management",         notes:"Uses MCHA — superior absorption vs calcium carbonate." },
-  { name:"Boron",                 emoji:"⚗️", who:"Sky only",    time:"Afternoon — with Bone-Up",      dosage:"3-6mg daily",                            brand:"TBD",                            purpose:"Bone metabolism, enhances calcium & magnesium absorption",notes:"📦 On the way. Pairs with Bone-Up and ADK." },
-  { name:"Pumpkin Seed Oil",      emoji:"🎃", who:"Sky only",    time:"Evening — with dinner",         dosage:"3,000mg",                                brand:"Micro Ingredients",              purpose:"Bladder support, urinary frequency related to DDD",      notes:"Cold-pressed. Mag Glycinate also supports bladder." },
-  { name:"Collagen Complex",      emoji:"💪", who:"Sky only",    time:"Evening — before bed",          dosage:"As directed on label",                   brand:"Professional Health Products",   purpose:"Joint & disc support, cartilage integrity for DDD",      notes:"📦 On the way. BioCell Collagen®, HA, OptiMSM®, Glucosamine." },
-  { name:"Cortisolv",             emoji:"🧘", who:"Meagan only", time:"Morning — upon waking",         dosage:"As directed on label",                   brand:"Xymogen",                        purpose:"Cortisol regulation, stress response, adrenal support",  notes:"Check for ashwagandha overlap with Stress Care." },
+  {
+    name:"Magnesium Glycinate", emoji:"🌙", who:"Both",
+    bottleSize:"60 servings (powder)", dailyDose:"1 scoop each (2/day total)", daysPerBottle:"30 days",
+    brand:"Thorne Magnesium Bisglycinate", timing:"Evening — before bed",
+    purpose:"Sleep quality, muscle relaxation, stress reduction. Most bioavailable form, gentle on digestion.",
+    buyAt:"Thorne.com", reorder:"Monthly subscription via Thorne.com — auto-ships"
+  },
+  {
+    name:"Magnesium L-Threonate", emoji:"🧠", who:"Both",
+    bottleSize:"90 capsules", dailyDose:"2 caps each (4/day total)", daysPerBottle:"~45 days",
+    brand:"Jarrow MagMind", timing:"Evening — before bed",
+    purpose:"Cognitive function, memory consolidation. Only form shown to cross the blood-brain barrier.",
+    buyAt:"PeoplesRx Austin", reorder:"Reorder when ~14 days remain (~6 weeks cycle)"
+  },
+  {
+    name:"ADK", emoji:"☀️", who:"Both",
+    bottleSize:"60 capsules", dailyDose:"1 cap each (2/day total)", daysPerBottle:"30 days",
+    brand:"DaVinci Laboratories (→ Thorne D/K2 + Vit A)", timing:"Morning — with food",
+    purpose:"Bone health, immune support, calcium regulation. K2 (MK-7) directs calcium to bones. Essential with D3.",
+    buyAt:"PeoplesRx Austin", reorder:"Reorder when ~14 days remain. Switch to Thorne when current supply runs out."
+  },
+  {
+    name:"Stress Care / Ashwagandha", emoji:"🌿", who:"Both",
+    bottleSize:"60 tablets", dailyDose:"2 tabs each (4/day total)", daysPerBottle:"~15 days",
+    brand:"Himalaya (→ Thorne Ashwagandha)", timing:"Morning — with food",
+    purpose:"HPA axis support, cortisol regulation. Contains ashwagandha, holy basil.",
+    buyAt:"PeoplesRx Austin", reorder:"Switch to Thorne Ashwagandha when current supply runs out (~27 days)"
+  },
+  {
+    name:"B-Complex Plus", emoji:"⚡", who:"Both",
+    bottleSize:"~75 caps remaining", dailyDose:"1 cap each (2/day total)", daysPerBottle:"~37 days",
+    brand:"Dr. Williams Methyl B (→ Thorne Basic B)", timing:"Morning — with food",
+    purpose:"Energy production, nervous system support. Methylated B12 and folate forms. Avoid evening — may disrupt sleep.",
+    buyAt:"PeoplesRx Austin", reorder:"Switch to Thorne Basic B when current supply runs out (~5 weeks)"
+  },
+  {
+    name:"Omega-3 / Fish Oil", emoji:"🐟", who:"Both",
+    bottleSize:"60 softgels", dailyDose:"1 softgel each (2/day total)", daysPerBottle:"30 days",
+    brand:"Xymogen Omega MonoPure 1300 EC", timing:"Evening — with dinner",
+    purpose:"Heart health, inflammation, brain, joints. IFOS 5-star, MaxSimil monoglyceride form = 3× absorption vs ethyl ester.",
+    buyAt:"PeoplesRx Austin", reorder:"Reorder when ~14 days remain"
+  },
+  {
+    name:"CoQ10", emoji:"⚡", who:"Both",
+    bottleSize:"60 softgels", dailyDose:"1 softgel each (2/day total)", daysPerBottle:"30 days",
+    brand:"Thorne CoQ10 (100mg)", timing:"Morning — with a fat-containing meal",
+    purpose:"Cellular energy production, mitochondrial support, antioxidant. Especially valuable for Sky (DDD — muscle recovery).",
+    buyAt:"Thorne.com", reorder:"Monthly subscription via Thorne.com — auto-ships"
+  },
+  {
+    name:"Creatine", emoji:"🏋️", who:"Both",
+    bottleSize:"180 servings (tub)", dailyDose:"1 scoop each (2/day total)", daysPerBottle:"90 days",
+    brand:"Thorne Creatine (5g/scoop)", timing:"Any time — mix in water or shake",
+    purpose:"Muscle strength, power output, cognitive function. NSF Certified for Sport. Takes 3–4 weeks of consistent use.",
+    buyAt:"Thorne.com", reorder:"Every 3 months subscription via Thorne.com — auto-ships"
+  },
+  {
+    name:"Bone-Up", emoji:"🦴", who:"Sky only",
+    bottleSize:"90 capsules", dailyDose:"2 caps (2/day)", daysPerBottle:"45 days",
+    brand:"Jarrow Formulas", timing:"Afternoon — with food",
+    purpose:"Bone density, skeletal support, DDD management. Uses MCHA — superior absorption vs calcium carbonate.",
+    buyAt:"PeoplesRx Austin", reorder:"Reorder when ~14 days remain (~6 week cycle)"
+  },
+  {
+    name:"Boron", emoji:"⚗️", who:"Sky only",
+    bottleSize:"60 capsules", dailyDose:"1 cap (1/day)", daysPerBottle:"60 days",
+    brand:"Pure Encapsulations (→ Thorne Boron)", timing:"Afternoon — with Bone-Up",
+    purpose:"Bone metabolism, enhances calcium and magnesium absorption. Pairs with Bone-Up and ADK.",
+    buyAt:"PeoplesRx Austin", reorder:"Switch to Thorne Boron when current supply runs out (~39 days)"
+  },
+  {
+    name:"Pumpkin Seed Oil", emoji:"🎃", who:"Sky only",
+    bottleSize:"300 softgels", dailyDose:"2 softgels (2/day)", daysPerBottle:"150 days",
+    brand:"Micro Ingredients", timing:"Evening — with dinner",
+    purpose:"Bladder support, urinary frequency related to DDD. Cold-pressed. Magnesium Glycinate also supports bladder.",
+    buyAt:"PeoplesRx Austin (check stock) or direct from Micro Ingredients", reorder:"Reorder when ~14 days remain (~5 month cycle)"
+  },
+  {
+    name:"Collagen Complex", emoji:"💪", who:"Sky only",
+    bottleSize:"~45 caps remaining", dailyDose:"2 caps (2/day)", daysPerBottle:"~22 days",
+    brand:"Professional Health Products", timing:"Evening — before bed",
+    purpose:"Joint and disc support, cartilage integrity for DDD. BioCell Collagen®, HA, OptiMSM®, Glucosamine. 7 human RCTs — do not replace.",
+    buyAt:"PeoplesRx Austin", reorder:"Reorder now — only ~22 days remaining. Do not substitute."
+  },
+  {
+    name:"Cortisolv", emoji:"🧘", who:"Meagan only",
+    bottleSize:"90 capsules", dailyDose:"1 cap (1/day)", daysPerBottle:"90 days",
+    brand:"Xymogen", timing:"Morning — upon waking",
+    purpose:"Cortisol regulation, stress response, adrenal support. Plan to eliminate when switching to Thorne Ashwagandha.",
+    buyAt:"PeoplesRx Austin", reorder:"Do not reorder — eliminating when current supply runs out. Confirm timing with practitioner."
+  },
 ];
 
 // ── State ─────────────────────────────────────────────────────
@@ -1246,12 +1330,15 @@ function renderInfo() {
           background:${whoColor}22;color:${whoColor};border:1px solid ${whoColor}44">${s.who}</span>
       </div>
       <div class="info-grid">
-        <div class="info-cell"><div class="info-cell-label">Dosage</div><div class="info-cell-val">${s.dosage}</div></div>
-        <div class="info-cell"><div class="info-cell-label">Timing</div><div class="info-cell-val">${s.time}</div></div>
         <div class="info-cell"><div class="info-cell-label">Brand</div><div class="info-cell-val">${s.brand}</div></div>
-        <div class="info-cell"><div class="info-cell-label">Purpose</div><div class="info-cell-val">${s.purpose}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Bottle Size</div><div class="info-cell-val">${s.bottleSize}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Daily Dose</div><div class="info-cell-val">${s.dailyDose}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Days / Bottle</div><div class="info-cell-val">${s.daysPerBottle}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Timing</div><div class="info-cell-val">${s.timing}</div></div>
+        <div class="info-cell"><div class="info-cell-label">Buy At</div><div class="info-cell-val">${s.buyAt}</div></div>
       </div>
-      <div class="info-cell"><div class="info-cell-label">📝 Notes</div><div class="info-cell-val" style="color:var(--muted)">${s.notes}</div></div>
+      <div class="info-cell" style="margin-top:8px"><div class="info-cell-label">Purpose</div><div class="info-cell-val" style="color:var(--text)">${s.purpose}</div></div>
+      <div class="info-cell" style="margin-top:6px"><div class="info-cell-label">🔄 Reorder</div><div class="info-cell-val" style="color:var(--warn)">${s.reorder}</div></div>
     </div>`;
   }).join("");
 
